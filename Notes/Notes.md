@@ -1,6 +1,6 @@
-## Chapter 1 A Tour of Computer System
+# Chapter 1 A Tour of Computer System
 
-#### Compilation System
+### Compilation System
     
 Take C language as an example `linux > gcc hello.c -o hello`
 
@@ -15,7 +15,7 @@ Take C language as an example `linux > gcc hello.c -o hello`
 
 - **Linker** (ld) $\texttt{.o} \to \texttt{Executable}$ Combines codes with standard libraries
 
-#### Hardware Organization of a System
+### Hardware Organization of a System
 
 <img src="pic/1.png" width="70%" height="70%">
 
@@ -23,11 +23,11 @@ Take C language as an example `linux > gcc hello.c -o hello`
 
     Transfer data in fixed-size blocks called words (4/8 bytes on a 32/64 bit system)
 
-#### Memory Hierarchy
+### Memory Hierarchy
 
 <img src="pic/2.png" width="70%" height="70%">
 
-#### Abstractions in Computer Systems
+### Abstractions in Computer Systems
 
 <img src="pic/3.png" width="70%" height="70%">
 
@@ -37,16 +37,15 @@ Take C language as an example `linux > gcc hello.c -o hello`
     Program Code & Data, Shared Libraries, Heap, Stack, Kernel Virtual Memory from bottom to top
 - **File**
 
-#### Amdahl's Law (Quantifying the performance improvement ceiling)
+### Amdahl's Law (Quantifying the performance improvement ceiling)
 
 $T_{new} = (1 - \alpha) T_{old} + \frac{\alpha T_{old}}{k} = T_{old} (1 - \alpha + \frac{\alpha}{k})$
 
 $S = \frac{T_{old}}{T_{new}} = \frac{1}{1 - \alpha + \frac{\alpha}{k}}$
 
+# Chapter 2 Representing and Manipulating Information
 
-## Chapter 2 Representing and Manipulating Information
-
-### Information Storage
+## Information Storage
 
 - **Words**
 
@@ -54,17 +53,17 @@ $S = \frac{T_{old}}{T_{new}} = \frac{1}{1 - \alpha + \frac{\alpha}{k}}$
 
 - **Addressing and Byte Ordering** Big endian & Little endian
 
-### Integer Representaions
+## Integer Representaions
 
-#### Unsigned Encodings
+### Unsigned Encodings
 
 Suppose a vector $\mathrm{x} = [x_{w - 1},x_{w - 2},\cdots,x_0]$, then $\operatorname{B2U_w}(x) = \sum \limits_{i = 0}^{w - 1}x_i \cdot 2^i$
 
-#### Two's Complement Encodings
+### Two's Complement Encodings
 
 Suppose a vector $\mathrm{x} = [x_{w - 1},x_{w - 2},\cdots,x_0]$, then $\operatorname{B2T_w}(x) = -x_{w - 1} \cdot 2^{w - 1} + \sum \limits_{i = 0}^{w - 2}x_i \cdot 2^i$
 
-#### Conversions between Signed and Unsigned
+### Conversions between Signed and Unsigned
 
 $$
 \operatorname{T2U_w}(x) = 
@@ -80,9 +79,9 @@ u - w^w,\quad x > Tmax_w
 \end{cases}
 $$
 
-#### Sign Extension
+### Sign Extension
 
-- **Small to Big** 
+#### Small to Big
 
     - Zero extension of unsigned numbers
     
@@ -92,15 +91,15 @@ $$
 
         Since $\operatorname{B2T_{w + 1}} -\operatorname{B2T_w} = (-x_{w - 1} \cdot 2^w + x_{w - 1} \cdot 2^{w - 1}) - x_{w - 1} \cdot 2^{w - 1} = 0$, by induction, we can proof it.
 
-- **Big to Small**
+#### Big to Small
 
     - $\operatorname{B2U_{k}}(x) = \operatorname{B2U_{w}}(x) \bmod 2^k$
 
     - $\operatorname{B2T_{k}}(x) = \operatorname{U2T_{w}}(\operatorname{B2U_{w}}(x) \bmod 2^k)$
 
-### Integer Arithmetic
+## Integer Arithmetic
 
-#### Addition
+### Addition
 
 $$
 x + y^u_w = 
@@ -119,7 +118,7 @@ x + y + 2^w,\quad x + y < -2^{w - 1}
 \end{cases}
 $$
 
-#### Additive Inverse
+### Additive Inverse
 
 $x + x' = 0\ \text{or}\ 2^w$
 
@@ -137,14 +136,14 @@ Tmin_w,\quad x = Tmin_w
 \end{cases}
 $$
 
-#### Multipilication
+### Multipilication
 
 $$
 x \times y^u_w = (x \cdot y) \bmod 2^k \\
 x \times y^t_w = \operatorname{U2T_w}((x \cdot y) \bmod 2^k)
 $$
 
-#### Division (by a power of 2)
+### Division (by a power of 2)
 
 Unsigned numbers use **logical shift**, while two's complement numbers use **arithmetic shift** to achieve sign-preserving extension.
 
@@ -154,9 +153,9 @@ Right shift performs integer division by powers of two :
 
 - $x < 0 \quad (x + (1 << k) - 1) >> k = \lceil \frac{x}{2^k} \rceil$
 
-### Floating Point
+## Floating Point
 
-#### Floating-Point Representation
+### Floating-Point Representation
 
 $V = (-1)^s \times M \times 2^E$
 
@@ -170,54 +169,68 @@ E (exponent) : $2^E$ weight.
 
 $\texttt{bias (float)} = 127 \quad \texttt{bias(double)} = 1023$ ($\texttt{bias} = 2^k - 1$)
 
-- **Normalized** exp is neither all 0s nor all 1s, i.e. $e \in [1,255]$
+#### Normalized 
 
-    $E = e - \texttt{bias}$, 
+exp is neither all 0s nor all 1s, i.e. $e \in [1,255]$
 
-    $M = 1 + f$
+$E = e - \texttt{bias}$, 
 
-- **Denormalized**
+$M = 1 + f$
 
-    $s = 0, f = 0 \rightarrow V = +0.0 \quad s = 1, f = 0 \rightarrow V = -0.0$
+#### Denormalized
 
-    $E = 1 - \texttt{bias}$
+$s = 0, f = 0 \rightarrow V = +0.0 \quad s = 1, f = 0 \rightarrow V = -0.0$
 
-    $M = f$
+$E = 1 - \texttt{bias}$
 
-- **Infinity**
+$M = f$
 
-    $s = 0, f = 0 \rightarrow V = +\infin \quad s = 1, f = 0 \rightarrow V = -\infin$
+#### Infinity
 
-- **NaN** (Not a Number)
+$s = 0, f = 0 \rightarrow V = +\infin \quad s = 1, f = 0 \rightarrow V = -\infin$
 
-    $f \neq 0$
+#### NaN (Not a Number)
+
+$f \neq 0$
+
+#### Comparison
 
 |Format|Minimum|Maximum|
 |:--:|:--:|:--:|
 |Single Precision Normalized <br> $V = (-1)^s \times \overline{1.f} \times 2^{e - 127}$|$e = \texttt{00000001}$ <br> $E_{\min} = -126$ <br> $f = 0$ <br> $V = 1.0 \times 2^{-126}$|$e = \texttt{11111110}$ <br> $E_{\max} = 127$ <br> $f = 0.\underbrace{11\ldots 1}_{23\ \text{ones}}$ <br> $M = 1 + f = 1 + (1 - 2^{-23})$ <br>$V = 1.0 \times 2^{127} \times (2 - 2^{-23}) \approx 3.4 \times 10^{38}$|
 |Double Precision Normalized <br> $V = (-1)^s \times \overline{0.f} \times 2^{-126}$|$e = \texttt{00000000}$ <br> $f = 2^{-23}$ <br> $V = 1.0 \times 2^{-149}$|$e = \texttt{00000000}$ <br> $f = 0.\underbrace{11\ldots 1}_{23\ \text{ones}}$ <br> $V = 1.0 \times 2^{-126} \times (1 - 2^{-23})$|
 
-#### Rounding
+### Rounding
 
-- **Round-down** e.g. $1.40 \to 1 \quad -1.5 \to -2$
+#### Round-down 
 
-- **Round-up** e.g. $1.40 \to 2 \quad -1.5 \to -1$
+e.g. $1.40 \to 1 \quad -1.5 \to -2$
 
-- **Round-toward-zero** e.g. $1.40 \to 1 \quad -1.5 \to -1$
+#### Round-up
 
-- **Round-to-even** e.g. $1.40 \to 1 \quad 1.6 \to 2 \quad 1.5 \to 2 \quad 2.5 \to 2$
-    - **Non-midpoint** round to the nearest representable value
-    - **Midpoint** choose the even one
+e.g. $1.40 \to 2 \quad -1.5 \to -1$
 
-#### Floating Point Operations
+#### Round-toward-zero
+
+e.g. $1.40 \to 1 \quad -1.5 \to -1$
+
+#### Round-to-even
+
+e.g. $1.40 \to 1 \quad 1.6 \to 2 \quad 1.5 \to 2 \quad 2.5 \to 2$
+
+- **Non-midpoint** round to the nearest representable value
+
+- **Midpoint** choose the even one
+
+### Floating Point Operations
 
 Lack of Associativity & Lack of Distributivity
 
-## Chapter 3 Machine-Level Representation of Programs
+# Chapter 3 Machine-Level Representation of Programs
 
-### Machine-Level Representation of Programs
+## Machine-Level Representation of Programs
 
-#### Size of Data Type in IA32
+### Size of Data Type in IA32
 
 |C declaration|Intel data type|Assembly-code suffix|Size (bytes)|
 |:--:|:--:|:--:|:--:|
@@ -229,108 +242,188 @@ Lack of Associativity & Lack of Distributivity
 |$\texttt{float}$|Single precision|$\texttt{s}$|$4$|
 |$\texttt{double}$|Double precision|$\texttt{l}$|$8$|
 
-#### Register
+### Register
 
 <img src="pic/5.png" width="50%" height="60%"><img src="pic/6.png" width="40%" height="50%">
 
-#### Information Access
+### Information Access
 
-- **Operands**
+#### Operands
 
-    - **Immediate**
+- **Immediate**
 
-    - **Register**
+- **Register**
 
-    - **Memory Reference** Immediate & Base Register & Index Register & Scale Factor (1,2,4,8)
+- **Memory Reference** Immediate & Base Register & Index Register & Scale Factor (1,2,4,8)
 
-    |Type|Form|Operator Value|Name|
-    |:--:|:--:|:--:|:--:|
-    |Immediate|$\$Imm$|$Imm$|Immediate|
-    |Register|$r_a$|$R[r_a]$|Register|
-    |Memory|$Imm (r_b,r_i,s)$|$M[Imm + R[r_b] + R[r_i] \cdot s]$|Scaled Indexed|
-    |Memory|$Imm$|$M[Imm]$|Absolute|
-    |Memory|$(r_a)$|$M[R[r_a]]$|Indirect|
-    |Memory|$Imm (r_b)$|$M[Imm + R[r_b]]$|Base + Displacement|
-    |Memory|$(r_b,r_i)$|$M[R[r_b] + R[r_i]]$|Indexed|
-    |Memory|$Imm (r_b,r_i)$|$M[Imm + R[r_b] + R[r_i]]$|Indexed|
-    |Memory|$(,r_i,s)$|$M[R[r_i] \cdot s]$|Scale Indexed|
-    |Memory|$Imm(,r_i,s)$|$M[Imm + R[r_i] \cdot s]$|Scale Indexed|
-    |Memory|$(r_b,r_i,s)$|$M[R[r_b] + R[r_i] \cdot s]$|Scale Indexed|
+|Type|Form|Operator Value|Name|
+|:--:|:--:|:--:|:--:|
+|Immediate|$\$Imm$|$Imm$|Immediate|
+|Register|$r_a$|$R[r_a]$|Register|
+|Memory|$Imm (r_b,r_i,s)$|$M[Imm + R[r_b] + R[r_i] \cdot s]$|Scaled Indexed|
+|Memory|$Imm$|$M[Imm]$|Absolute|
+|Memory|$(r_a)$|$M[R[r_a]]$|Indirect|
+|Memory|$Imm (r_b)$|$M[Imm + R[r_b]]$|Base + Displacement|
+|Memory|$(r_b,r_i)$|$M[R[r_b] + R[r_i]]$|Indexed|
+|Memory|$Imm (r_b,r_i)$|$M[Imm + R[r_b] + R[r_i]]$|Indexed|
+|Memory|$(,r_i,s)$|$M[R[r_i] \cdot s]$|Scale Indexed|
+|Memory|$Imm(,r_i,s)$|$M[Imm + R[r_i] \cdot s]$|Scale Indexed|
+|Memory|$(r_b,r_i,s)$|$M[R[r_b] + R[r_i] \cdot s]$|Scale Indexed|
 
-- **Operation code**
+#### Operation code
 
-    - **Movement** 
+- **Movement** 
 
-        - $\text{mov} \quad \text{S,D}$ [`movb`, `movw`, `movl`, `movq`, `movabsq`]
+    - $\text{mov} \quad \text{S,D}$ [`movb`, `movw`, `movl`, `movq`, `movabsq`]
 
-            Source operand (Immedita, Register, Memory); Destination operand (Register, Memory)
+        Source operand (Immedita, Register, Memory); Destination operand (Register, Memory)
 
-            Two operands of a move instruction **cannot** both be memory references. (It is necessary to first move the source memory reference into a register, and then move it to the destination memory reference.)
+        Two operands of a move instruction **cannot** both be memory references. (It is necessary to first move the source memory reference into a register, and then move it to the destination memory reference.)
 
-            `movl` writes 32 bits of data to the lower half and then automatically zero-extends the value into the upper 32 bits. (In x86-64, any instruction that generates a 32-bit result for a register will set the upper 32 bits of that register to zero.)
+        `movl` writes 32 bits of data to the lower half and then automatically zero-extends the value into the upper 32 bits. (In x86-64, any instruction that generates a 32-bit result for a register will set the upper 32 bits of that register to zero.)
 
-            `movq` can only be 32 bits (sign-extended to 64 bits), whereas `movabsq` can be 64-bit but the destination must be a **register**.
+        `movq` can only be 32 bits (sign-extended to 64 bits), whereas `movabsq` can be 64-bit but the destination must be a **register**.
 
-        - $\text{movz} \quad \text{S, R}$ [`movzbw`, `movzbl`, `movzwl`, `movzbq`, `movzwq`]
+    - $\text{movz} \quad \text{S, R}$ [`movzbw`, `movzbl`, `movzwl`, `movzbq`, `movzwq`]
 
-            `movzlq` does not exist because of `movl` instruction.
+        `movzlq` does not exist because of `movl` instruction.
 
-        - $\text{movs} \quad \text{S, R}$ [`movsbw`, `movsbl`, `movswl`, `movsbq`, `movswq`, `movslq`, `cltq`]
-            
-            `cltq` same as `movslq %eax, %rax`
-
-    - **Stack**
-
-        let a quad number be the example
-
-        - $\texttt{pushq} \quad S$ 
-
-            ```assemblely
-            subq $8 %rsp
-            movq %rbq,(%rsp)
-            ```
+    - $\text{movs} \quad \text{S, R}$ [`movsbw`, `movsbl`, `movswl`, `movsbq`, `movswq`, `movslq`, `cltq`]
         
-         - $\texttt{popq} \quad S$ 
+        `cltq` same as `movslq %eax, %rax`
 
-            ```assemblely
-            movq (%rsq),%rax
-            addq $8, %rsp
-            ```
-#### Arithmetic and Logical Operations
+- **Stack**
 
-- **Load Effective Address**
+    let a quad number be the example
 
-    $\texttt{leaq} \quad S, D$ 
+    - $\texttt{pushq} \quad S$ 
+
+        ```assemblely
+        subq $8 %rsp
+        movq %rbq,(%rsp)
+        ```
     
-    Computes effective address and stores it in destination register
+    - $\texttt{popq} \quad S$ 
 
-- **Unary Operations**
+        ```assemblely
+        movq (%rsq),%rax
+        addq $8, %rsp
+        ```
 
-|Instructions|Effect|
-|:--:|:--:|
-|`inc D`|$D \leftarrow D + 1$|
-|`dec D`|$D \leftarrow D - 1$|
-|`neg D`|$D \leftarrow -D$|
-|`not D`|$D \leftarrow \sim D$|
+### Arithmetic and Logical Operations
 
-- **Binary Operations**
+#### Load Effective Address
 
-|Instructions|Effect|
-|:--:|:--:|
-|`add S D`|$D \leftarrow D + S$|
-|`sub S D`|$D \leftarrow D - S$|
-|`imul S D`|$D \leftarrow D \times S$|
-|`xor S D`|$D \leftarrow D \oplus S$|
-|`or S D`|$D \leftarrow D \mid S$|
-|`and S D`|$D \leftarrow D \mathbin{\&} S$|
+$\texttt{leaq} \quad S, D$ 
 
-- **Shift Operations**
+Computes effective address and stores it in destination register
+
+#### Unary Operations
 
 |Instructions|Effect|
 |:--:|:--:|
-|`sal D`|$D \leftarrow D << k$|
-|`shl D`|$D \leftarrow D << k$|
-|`sar D`|$D \leftarrow D >>_A k$ Arithmetic Right Shift|
-|`shr D`|$D \leftarrow D >>_L k$ Logical Right Shift|
+|`inc D`|$D \gets D + 1$|
+|`dec D`|$D \gets D - 1$|
+|`neg D`|$D \gets -D$|
+|`not D`|$D \gets \sim D$|
+
+#### Binary Operations
+
+|Instructions|Effect|
+|:--:|:--:|
+|`add S D`|$D \gets D + S$|
+|`sub S D`|$D \gets D - S$|
+|`imul S D`|$D \gets D \times S$|
+|`xor S D`|$D \gets D \oplus S$|
+|`or S D`|$D \gets D \mid S$|
+|`and S D`|$D \gets D \mathbin{\&} S$|
+
+#### Shift Operations
+
+|Instructions|Effect|
+|:--:|:--:|
+|`sal D`|$D \gets D << k$|
+|`shl D`|$D \gets D << k$|
+|`sar D`|$D \gets D >>_A k$ Arithmetic Right Shift|
+|`shr D`|$D \gets D >>_L k$ Logical Right Shift|
 
 Shift instructions can shift by an immediate value, or by a value placed in the single-byte register `%cl`.
+
+### Control
+
+#### Condition Code
+
+- $\texttt{CF}$ Carry Flag [check for overflow in unsigned operations]
+
+- $\texttt{ZF}$ Zero Flag
+
+- $\texttt{SF}$ Sign Flag
+
+- $\texttt{OF}$ Overflow Flag
+
+- $\texttt{cmp\quad S \quad D}$ similar to `sub`, but it only sets the condition codes without changing the value of the destination register
+
+- $\texttt{test\quad S \quad D}$ similar to `and`, but it only sets the condition codes without changing the value of the destination register
+
+- **Set Instructions**
+
+
+    |Instruction|Effect|Description|
+    |:--:|:--:|:--:|
+    |$\texttt{sete D}$|$D \gets \texttt{ZF}$|$=$|
+    |$\texttt{setbe D}$|$D \gets \sim \texttt{ZF}$|$\neq$|
+    |$\texttt{sets D}$|$D \gets \texttt{SF}$|negative|
+    |$\texttt{setns D}$|$D \gets \sim \texttt{SF}$|nonnegative|
+    |$\texttt{setg D}$|$D \gets \sim (\texttt{SF} \oplus \texttt{OF}) \mathbin{\&} \sim \texttt{ZF}$|Signed $>$|
+    |$\texttt{setge D}$|$D \gets \sim (\texttt{SF} \oplus \texttt{OF})$|Signed $\ge$|
+    |$\texttt{setl D}$|$D \gets \texttt{SF} \oplus \texttt{OF}$|Signed $<$|
+    |$\texttt{setle D}$|$D \gets (\texttt{SF} \oplus \texttt{OF}) \mid \sim \texttt{ZF}$|Signed $\le$|
+    |$\texttt{seta D}$|$D \gets \sim \texttt{CF} \mathbin{\&} \sim \texttt{ZF}$|Unsigned $>$|
+    |$\texttt{setae D}$|$D \gets \sim \texttt{CF}$|Unsigned $\ge$|
+    |$\texttt{setb D}$|$D \gets \texttt{CF}$|Unsigned $<$|
+    |$\texttt{setbe D}$|$D \gets \texttt{CF} \mid \texttt{ZF}$|Unsigned $\le$|
+
+#### Jump Instructions
+
+|Instruction|Jump Condition|Description|
+|:--:|:--:|:--:|
+|$\texttt{jmp Label}$|$\mathrm{true}$|Direct Jump|
+|$\texttt{jmp *Operand}$|$\mathrm{true}$|Indirect Jump|
+|$\texttt{je Label}$|$\texttt{ZF}$|$=$|
+|$\texttt{jne Label}$|$\sim \texttt{ZF}$|$\neq$|
+|$\texttt{js Label}$|$\texttt{SF}$|Negative|
+|$\texttt{jns Label}$|$\sim \texttt{SF}$|Nonnegative|
+|$\texttt{jg Label}$|$\sim (\texttt{SF}\oplus \texttt{OF}) \mathbin{\&} \sim \texttt{ZF}$|Signed $>$|
+|$\texttt{jge Label}$|$\sim (\texttt{SF}\oplus \texttt{OF})$|Signed $\ge$|
+|$\texttt{jl Label}$|$\texttt{SF}\oplus \texttt{OF}$|Signed $<$|
+|$\texttt{jle Label}$|$(\texttt{SF}\oplus \texttt{OF}) \mid \texttt{ZF}$|Signed $\le$|
+|$\texttt{ja Label}$|$\sim \texttt{CF} \mathbin{\&} \sim \texttt{ZF}$|Unsigned $>$|
+|$\texttt{jae Label}$|$\sim \texttt{CF}$|Unsigned $\ge$|
+|$\texttt{jb Label}$|$\texttt{CF}$|Unsigned $<$|
+|$\texttt{jbe Label}$|$\texttt{CF} \mid \texttt{ZF}$|Unsigned $\le$|
+
+
+#### Conditional Move Instructions
+
+|Instruction|Move Condition|Description|
+|:--:|:--:|:--:|
+|$\texttt{cmove S, R}$|$\texttt{ZF}$|$=$|
+|$\texttt{cmovne S, R}$|$\sim \texttt{ZF}$|$\neq$|
+|$\texttt{cmovs S, R}$|$\texttt{SF}$|Negative|
+|$\texttt{cmovns S, R}$|$\sim \texttt{SF}$|Nonnegative|
+|$\texttt{cmovg S, R}$|$\sim (\texttt{SF}\oplus \texttt{OF}) \mathbin{\&} \sim \texttt{ZF}$|Signed $>$|
+|$\texttt{cmovge S, R}$|$\sim (\texttt{SF}\oplus \texttt{OF})$|Signed $\ge$|
+|$\texttt{cmovl S, R}$|$\texttt{SF}\oplus \texttt{OF}$|Signed $<$|
+|$\texttt{cmovle S, R}$|$(\texttt{SF}\oplus \texttt{OF}) \mid \texttt{ZF}$|Signed $\le$|
+|$\texttt{cmova S, R}$|$\sim \texttt{CF} \mathbin{\&} \sim \texttt{ZF}$|Unsigned $>$|
+|$\texttt{cmovae S, R}$|$\sim \texttt{CF}$|Unsigned $\ge$|
+|$\texttt{cmovb S, R}$|$\texttt{CF}$|Unsigned $<$|
+|$\texttt{cmovbe S, R}$|$\texttt{CF} \mid \texttt{ZF}$|Unsigned $\le$|
+
+#### Loop
+
+`do-while`, `while`, and `for` loops can be implemented by combining conditional tests and jumps.
+
+#### Switch
+
+`switch` is compiled into a jump table. The execution time of the switch statement is irrelevant to the number of cases.

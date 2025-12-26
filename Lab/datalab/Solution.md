@@ -361,7 +361,7 @@ This report documents the solutions to the CS:APP Data Lab problems. The goal of
 
         $V = 1.0 \times 2^{e - 127}$
 
-        $f = 0,\quad V \leftarrow (e << 23) | f$
+        $f = 0,\quad V \gets (e << 23) | f$
 
     - Case 3 : Denormalized
 
@@ -371,7 +371,7 @@ This report documents the solutions to the CS:APP Data Lab problems. The goal of
 
         minimum number is $2^{-126} \times 2^{-23} = 2^{-149}$, i.e. put 1 on index 0.
 
-        $\Longrightarrow V \leftarrow 1 << (x + 149)$
+        $\Longrightarrow V \gets 1 << (x + 149)$
 
     - Case 4 : Underflow
 
