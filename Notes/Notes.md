@@ -361,9 +361,17 @@ Shift instructions can shift by an immediate value, or by a value placed in the 
 
 - $\texttt{OF}$ Overflow Flag
 
-- $\texttt{cmp\quad S \quad D}$ similar to `sub`, but it only sets the condition codes without changing the value of the destination register
+- $\texttt{cmp\quad S \quad D}$ 
 
-- $\texttt{test\quad S \quad D}$ similar to `and`, but it only sets the condition codes without changing the value of the destination register
+    Similar to `sub`, but it only sets the condition codes without changing the value of the destination register.
+
+    When `S == D`, $\texttt{ZF} = 1$.
+
+- $\texttt{test\quad S \quad D}$
+    
+    Similar to `and`, but it only sets the condition codes without changing the value of the destination register.
+
+    When `S & D == 0`, $\texttt{ZF} = 1$.
 
 #### Set Instructions
 
