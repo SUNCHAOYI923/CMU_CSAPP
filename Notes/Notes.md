@@ -365,60 +365,58 @@ Shift instructions can shift by an immediate value, or by a value placed in the 
 
 - $\texttt{test\quad S \quad D}$ similar to `and`, but it only sets the condition codes without changing the value of the destination register
 
-- **Set Instructions**
+#### Set Instructions
 
-
-    |Instruction|Effect|Description|
-    |:--:|:--:|:--:|
-    |$\texttt{sete D}$|$D \gets \texttt{ZF}$|$=$|
-    |$\texttt{setbe D}$|$D \gets \sim \texttt{ZF}$|$\neq$|
-    |$\texttt{sets D}$|$D \gets \texttt{SF}$|negative|
-    |$\texttt{setns D}$|$D \gets \sim \texttt{SF}$|nonnegative|
-    |$\texttt{setg D}$|$D \gets \sim (\texttt{SF} \oplus \texttt{OF}) \mathbin{\&} \sim \texttt{ZF}$|Signed $>$|
-    |$\texttt{setge D}$|$D \gets \sim (\texttt{SF} \oplus \texttt{OF})$|Signed $\ge$|
-    |$\texttt{setl D}$|$D \gets \texttt{SF} \oplus \texttt{OF}$|Signed $<$|
-    |$\texttt{setle D}$|$D \gets (\texttt{SF} \oplus \texttt{OF}) \mid \sim \texttt{ZF}$|Signed $\le$|
-    |$\texttt{seta D}$|$D \gets \sim \texttt{CF} \mathbin{\&} \sim \texttt{ZF}$|Unsigned $>$|
-    |$\texttt{setae D}$|$D \gets \sim \texttt{CF}$|Unsigned $\ge$|
-    |$\texttt{setb D}$|$D \gets \texttt{CF}$|Unsigned $<$|
-    |$\texttt{setbe D}$|$D \gets \texttt{CF} \mid \texttt{ZF}$|Unsigned $\le$|
+|Instruction|Effect|Description|
+|:--:|:--:|:--:|
+|`sete D`|$D \gets \texttt{ZF}$|$=$|
+|`setne D`|$D \gets \sim \texttt{ZF}$|$\neq$|
+|`sets D`|$D \gets \texttt{SF}$|negative|
+|`setns D`|$D \gets \sim \texttt{SF}$|nonnegative|
+|`setg D`|$D \gets \sim (\texttt{SF} \oplus \texttt{OF}) \mathbin{\&} \sim \texttt{ZF}$|Signed $>$|
+|`setge D`|$D \gets \sim (\texttt{SF} \oplus \texttt{OF})$|Signed $\ge$|
+|`setl D`|$D \gets \texttt{SF} \oplus \texttt{OF}$|Signed $<$|
+|`setle D`|$D \gets (\texttt{SF} \oplus \texttt{OF}) \mid \texttt{ZF}$|Signed $\le$|
+|`seta D`|$D \gets \sim \texttt{CF} \mathbin{\&} \sim \texttt{ZF}$|Unsigned $>$|
+|`setae D`|$D \gets \sim \texttt{CF}$|Unsigned $\ge$|
+|`setb D`|$D \gets \texttt{CF}$|Unsigned $<$|
+|`setbe D`|$D \gets \texttt{CF} \mid \texttt{ZF}$|Unsigned $\le$|
 
 #### Jump Instructions
 
 |Instruction|Jump Condition|Description|
 |:--:|:--:|:--:|
-|$\texttt{jmp Label}$|$\mathrm{true}$|Direct Jump|
-|$\texttt{jmp *Operand}$|$\mathrm{true}$|Indirect Jump|
-|$\texttt{je Label}$|$\texttt{ZF}$|$=$|
-|$\texttt{jne Label}$|$\sim \texttt{ZF}$|$\neq$|
-|$\texttt{js Label}$|$\texttt{SF}$|Negative|
-|$\texttt{jns Label}$|$\sim \texttt{SF}$|Nonnegative|
-|$\texttt{jg Label}$|$\sim (\texttt{SF}\oplus \texttt{OF}) \mathbin{\&} \sim \texttt{ZF}$|Signed $>$|
-|$\texttt{jge Label}$|$\sim (\texttt{SF}\oplus \texttt{OF})$|Signed $\ge$|
-|$\texttt{jl Label}$|$\texttt{SF}\oplus \texttt{OF}$|Signed $<$|
-|$\texttt{jle Label}$|$(\texttt{SF}\oplus \texttt{OF}) \mid \texttt{ZF}$|Signed $\le$|
-|$\texttt{ja Label}$|$\sim \texttt{CF} \mathbin{\&} \sim \texttt{ZF}$|Unsigned $>$|
-|$\texttt{jae Label}$|$\sim \texttt{CF}$|Unsigned $\ge$|
-|$\texttt{jb Label}$|$\texttt{CF}$|Unsigned $<$|
-|$\texttt{jbe Label}$|$\texttt{CF} \mid \texttt{ZF}$|Unsigned $\le$|
-
+|`jmp Label`|$\mathrm{true}$|Direct Jump|
+|`jmp *Operand`|$\mathrm{true}$|Indirect Jump|
+|`je Label`|$\texttt{ZF}$|$=$|
+|`jne Label`|$\sim \texttt{ZF}$|$\neq$|
+|`js Label`|$\texttt{SF}$|Negative|
+|`jns Label`|$\sim \texttt{SF}$|Nonnegative|
+|`jg Label`|$\sim (\texttt{SF}\oplus \texttt{OF}) \mathbin{\&} \sim \texttt{ZF}$|Signed $>$|
+|`jge Label`|$\sim (\texttt{SF}\oplus \texttt{OF})$|Signed $\ge$|
+|`jl Label`|$\texttt{SF}\oplus \texttt{OF}$|Signed $<$|
+|`jle Label`|$(\texttt{SF}\oplus \texttt{OF}) \mid \texttt{ZF}$|Signed $\le$|
+|`ja Label`|$\sim \texttt{CF} \mathbin{\&} \sim \texttt{ZF}$|Unsigned $>$|
+|`jae Label`|$\sim \texttt{CF}$|Unsigned $\ge$|
+|`jb Label`|$\texttt{CF}$|Unsigned $<$|
+|`jbe Label`|$\texttt{CF} \mid \texttt{ZF}$|Unsigned $\le$|
 
 #### Conditional Move Instructions
 
 |Instruction|Move Condition|Description|
 |:--:|:--:|:--:|
-|$\texttt{cmove S, R}$|$\texttt{ZF}$|$=$|
-|$\texttt{cmovne S, R}$|$\sim \texttt{ZF}$|$\neq$|
-|$\texttt{cmovs S, R}$|$\texttt{SF}$|Negative|
-|$\texttt{cmovns S, R}$|$\sim \texttt{SF}$|Nonnegative|
-|$\texttt{cmovg S, R}$|$\sim (\texttt{SF}\oplus \texttt{OF}) \mathbin{\&} \sim \texttt{ZF}$|Signed $>$|
-|$\texttt{cmovge S, R}$|$\sim (\texttt{SF}\oplus \texttt{OF})$|Signed $\ge$|
-|$\texttt{cmovl S, R}$|$\texttt{SF}\oplus \texttt{OF}$|Signed $<$|
-|$\texttt{cmovle S, R}$|$(\texttt{SF}\oplus \texttt{OF}) \mid \texttt{ZF}$|Signed $\le$|
-|$\texttt{cmova S, R}$|$\sim \texttt{CF} \mathbin{\&} \sim \texttt{ZF}$|Unsigned $>$|
-|$\texttt{cmovae S, R}$|$\sim \texttt{CF}$|Unsigned $\ge$|
-|$\texttt{cmovb S, R}$|$\texttt{CF}$|Unsigned $<$|
-|$\texttt{cmovbe S, R}$|$\texttt{CF} \mid \texttt{ZF}$|Unsigned $\le$|
+|`cmove S, R`|$\texttt{ZF}$|$=$|
+|`cmovne S, R`|$\sim \texttt{ZF}$|$\neq$|
+|`cmovs S, R`|$\texttt{SF}$|Negative|
+|`cmovns S, R`|$\sim \texttt{SF}$|Nonnegative|
+|`cmovg S, R`|$\sim (\texttt{SF}\oplus \texttt{OF}) \mathbin{\&} \sim \texttt{ZF}$|Signed $>$|
+|`cmovge S, R`|$\sim (\texttt{SF}\oplus \texttt{OF})$|Signed $\ge$|
+|`cmovl S, R`|$\texttt{SF}\oplus \texttt{OF}$|Signed $<$|
+|`cmovle S, R`|$(\texttt{SF}\oplus \texttt{OF}) \mid \texttt{ZF}$|Signed $\le$|
+|`cmova S, R`|$\sim \texttt{CF} \mathbin{\&} \sim \texttt{ZF}$|Unsigned $>$|
+|`cmovae S, R`|$\sim \texttt{CF}$|Unsigned $\ge$|
+|`cmovb S, R`|$\texttt{CF}$|Unsigned $<$|
+|`cmovbe S, R`|$\texttt{CF} \mid \texttt{ZF}$|Unsigned $\le$|
 
 #### Loop
 
@@ -427,3 +425,81 @@ Shift instructions can shift by an immediate value, or by a value placed in the 
 #### Switch
 
 `switch` is compiled into a jump table. The execution time of the switch statement is irrelevant to the number of cases.
+
+### Procedures
+
+#### Transfer Control
+|Instruction|Description|
+|:--:|:--:|
+|`call Label`|Procedure Call (Direct)|
+|`call *Operand`|Procedure Call (Indirect)|
+|`ret`|Return from Procedure Call|
+
+#### Data Transfer
+
+The registers' names depend on the size of the data type being passed.
+
+If a function has more than 6 integer parameters, the additional arguments must be passed on the **stack**. Note that the argument 7 is located at the top of the stack. All stack-passed arguments are aligned to multiples of 8 bytes.
+
+### Array Allocation and Access
+
+#### Pointer
+
+| Expression   | Type  | Value                 | Assembly Code                  |
+|--------------|-------|------------------------|--------------------------------|
+| `E`          | `int*` | \( x_E \)             | `movq %rdx, %rax`              |
+| `E[i]`       | `int`  | \( M[x_E + 4i] \)     | `movl (%rdx, %rcx, 4), %eax`   |
+| `&E[i]`      | `int*` | \( x_E + 4i \)        | `leaq 8(%rdx, %rcx, 4), %rax`  |
+| `&E[i] - E`  | `long` | \( i \)               | `movq %rcx, %rax`              |
+
+**Notes**:
+
+1. `&E[i] - E` yields type `long` (specifically `ptrdiff_t`) because pointer subtraction returns the number of elements between them as a signed integer.
+
+2. `int*` uses `movq` (not `movl`) because pointers are 64-bit addresses in x86-64.
+
+#### Nested Arrays
+
+`T D[R][C]` $\&D[R][C] = x_D + L(C \cdot i + j)$, $L$ is the size of data type `T` in bytes.
+
+
+### Struture & Union
+
+#### Structure
+
+|$K$|Types|
+|:--:|:--:|
+|$1$|$\texttt{char}$|
+|$2$|$\texttt{short}$|
+|$4$|$\texttt{int, float}$|
+|$8$|$\texttt{long, double, char *}$|
+
+**Notes**:
+
+1. The address of any K-byte basic object must be a multiple of $K$.
+
+2. The offset of the first member is always 0 in a structure.
+
+3. The compilers probably add some bytes at the end of a structure to ensure that each element in an array of structures could satisfy its alignment requirements.
+
+#### Union
+
+The total size of a union equals the size of its largest field.
+
+### Application
+
+#### Buffer Overflow
+
+Three protection mechanisms to thwart buffer overflow attacks:
+
+- **Stack Randomization** Address-Space Layout Randomization (ASLR)
+
+- **Stack Corruption Detection**  Place a random **canary** value between local buffers and critical stack data to detect buffer overflows.
+
+- **Limiting Executable Code Regions**
+
+#### Dynamic Stack Frame
+
+`%rbp` is base pointer/frame pointer dynamic stack frame
+
+### Floating-point Code
