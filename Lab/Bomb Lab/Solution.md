@@ -1,3 +1,8 @@
+# CS:APP Bomb Lab Report
+**Name** SUNCHAOYI  
+
+First use `objdump -d bomb > bomb.asm` to get its assmebly.
+
 ## Phase_1
 
 ```assembly
@@ -21,12 +26,7 @@
     (gdb) x/s 0x402400
     ```
 
-The Phase_1 answer is:
-
-```
-Border relations with Canada have never been better.
-```
-
+The Phase_1 answer is `Border relations with Canada have never been better.`
 
 ## Phase_2
 
@@ -69,21 +69,17 @@ Border relations with Canada have never been better.
 
     `%rbp` is set to point just past the last element (`&numbers[6]`), since `0x18` $= 6 \times 4 = 24$ bytes.  
 
-    Execution then jumps to the loop body at `0x400f17`.
+    Execution then jumps to the loop body at `400f17`.
 
-- `0x400f17` $\sim$ `0x400f2c` (loop body)
+- `400f17` $\sim$ `400f2c` (loop body)
 
     Load the previous element (`numbers[i-1]`) into `%eax`, double it, and compare the result with the current element (`numbers[i]`).  
 
     Only if `numbers[i] == 2 * numbers[i-1]` does the loop continue; otherwise the bomb explodes.  
 
-    After processing all six numbers, control jumps to `0x400f3c` (loop exit).
+    After processing all six numbers, control jumps to `400f3c` (loop exit).
 
-The required sequence for Phase 2 is therefore:
-
-```
-1 2 4 8 16 32
-```
+The required sequence for Phase 2 is therefore `1 2 4 8 16 32`.
 
 ## Phase_3
 
@@ -139,9 +135,9 @@ The required sequence for Phase 2 is therefore:
 
     The first integer must be $\le 7$, otherwise the bomb explodes.
 
-- `0x400f7c` $\sim$ `0x400fbe` (switch body)
+- `400f7c` $\sim$ `400fbe` (switch body)
 
-    Each case loads a specific immediate value into `%eax`, then jumps to a common check at `0x400fbe`.  
+    Each case loads a specific immediate value into `%eax`, then jumps to a common check at `400fbe`.  
     
     There, the loaded value is compared with the second integer. Only if they are equal does the phase pass.
 
@@ -152,3 +148,556 @@ From the jump‑table cases we obtain the valid pairs:
 ```
 
 Any one of these pairs is a correct solution.
+
+## Phase_4
+
+```Assembly
+0000000000400fce <func4>:
+  400fce:	48 83 ec 08          	sub    $0x8,%rsp
+  400fd2:	89 d0                	mov    %edx,%eax
+  400fd4:	29 f0                	sub    %esi,%eax
+  400fd6:	89 c1                	mov    %eax,%ecx
+  400fd8:	c1 e9 1f             	shr    $0x1f,%ecx
+  400fdb:	01 c8                	add    %ecx,%eax
+  400fdd:	d1 f8                	sar    $1,%eax
+  400fdf:	8d 0c 30             	lea    (%rax,%rsi,1),%ecx
+  400fe2:	39 f9                	cmp    %edi,%ecx
+  400fe4:	7e 0c                	jle    400ff2 <func4+0x24>
+  400fe6:	8d 51 ff             	lea    -0x1(%rcx),%edx
+  400fe9:	e8 e0 ff ff ff       	call   400fce <func4>
+  400fee:	01 c0                	add    %eax,%eax
+  400ff0:	eb 15                	jmp    401007 <func4+0x39>
+  400ff2:	b8 00 00 00 00       	mov    $0x0,%eax
+  400ff7:	39 f9                	cmp    %edi,%ecx
+  400ff9:	7d 0c                	jge    401007 <func4+0x39>
+  400ffb:	8d 71 01             	lea    0x1(%rcx),%esi
+  400ffe:	e8 cb ff ff ff       	call   400fce <func4>
+  401003:	8d 44 00 01          	lea    0x1(%rax,%rax,1),%eax
+  401007:	48 83 c4 08          	add    $0x8,%rsp
+  40100b:	c3                   	ret
+000000000040100c <phase_4>:
+  40100c:	48 83 ec 18          	sub    $0x18,%rsp
+  401010:	48 8d 4c 24 0c       	lea    0xc(%rsp),%rcx
+  401015:	48 8d 54 24 08       	lea    0x8(%rsp),%rdx
+  40101a:	be cf 25 40 00       	mov    $0x4025cf,%esi
+  40101f:	b8 00 00 00 00       	mov    $0x0,%eax
+  401024:	e8 c7 fb ff ff       	call   400bf0 <__isoc99_sscanf@plt>
+  401029:	83 f8 02             	cmp    $0x2,%eax
+  40102c:	75 07                	jne    401035 <phase_4+0x29>
+  40102e:	83 7c 24 08 0e       	cmpl   $0xe,0x8(%rsp)
+  401033:	76 05                	jbe    40103a <phase_4+0x2e>
+  401035:	e8 00 04 00 00       	call   40143a <explode_bomb>
+  40103a:	ba 0e 00 00 00       	mov    $0xe,%edx
+  40103f:	be 00 00 00 00       	mov    $0x0,%esi
+  401044:	8b 7c 24 08          	mov    0x8(%rsp),%edi
+  401048:	e8 81 ff ff ff       	call   400fce <func4>
+  40104d:	85 c0                	test   %eax,%eax
+  40104f:	75 07                	jne    401058 <phase_4+0x4c>
+  401051:	83 7c 24 0c 00       	cmpl   $0x0,0xc(%rsp)
+  401056:	74 05                	je     40105d <phase_4+0x51>
+  401058:	e8 dd 03 00 00       	call   40143a <explode_bomb>
+  40105d:	48 83 c4 18          	add    $0x18,%rsp
+  401061:	c3                   	ret
+```
+
+- `mov    $0x4025cf,%esi` & `cmp    $0x2,%eax` & `jne    401035 <phase_4+0x29>`
+
+    Using `(gdb) x/s 0x4025cf` shows `"%d %d"`, meaning the input must be two integers separated by a space.  
+    
+    If `sscanf` returns a value $\neq 2$, the bomb explodes.
+
+- `lea    0xc(%rsp),%rcx` & `lea    0x8(%rsp),%rdx` & `cmpl   $0xe,0x8(%rsp)` & `cmpl   $0x0,0xc(%rsp)`
+
+   `%rdx` points to where the first integer is stored (`0x8(%rsp)`), and `%rcx` points to the second integer (`0xc(%rsp)`).  
+
+    The first integer must be $\le 14$, the second integer must exactly $0$, otherwise the bomb explodes.
+
+- `mov    $0xe,%edx` & `mov    $0x0,%esi` & `mov    0x8(%rsp),%edi` & call   400fce <func4>` & `cmpl   $0x0,0xc(%rsp)`
+
+    Three arguments are passed to `func4`, i.e. `func4(first_number,0,14)`.  
+    
+    The function must return 0, otherwise the bomb explodes.
+
+- `<func4>` assembly translated to C language 
+
+    ```c
+    int func4(int target, int low, int high)
+    {
+        int mid = low + (high - low) / 2;
+        //since low = 0,high = 14 so the sign bit = 0, which can be ignored.
+        if (mid <= target)
+        {
+            if (mid >= target) return 0; // i.e. target can be found
+            else 
+            {
+                low = mid + 1;
+                return 2 * func4 (target,low,high) + 1;
+            }
+        }
+        else
+        {
+            high = mid - 1;
+            return 2 * func4 (target,low,high);
+        }
+    }
+    ```
+
+The function returns $0$ only when first_number lies on the "mid‑point path" of the binary search.The valid values for the first number are $0,1,3,7$.
+
+Combining all conditions, the correct answers for Phase_4 are any of the following pairs:
+
+```
+0 0 / 1 0 / 3 0 / 7 0
+```
+
+
+## Phase_5
+
+```Assembly
+0000000000401062 <phase_5>:
+  401062:	53                   	push   %rbx
+  401063:	48 83 ec 20          	sub    $0x20,%rsp
+  401067:	48 89 fb             	mov    %rdi,%rbx
+  40106a:	64 48 8b 04 25 28 00 	mov    %fs:0x28,%rax
+  401071:	00 00 
+  401073:	48 89 44 24 18       	mov    %rax,0x18(%rsp)
+  401078:	31 c0                	xor    %eax,%eax
+  40107a:	e8 9c 02 00 00       	call   40131b <string_length>
+  40107f:	83 f8 06             	cmp    $0x6,%eax
+  401082:	74 4e                	je     4010d2 <phase_5+0x70>
+  401084:	e8 b1 03 00 00       	call   40143a <explode_bomb>
+  401089:	eb 47                	jmp    4010d2 <phase_5+0x70>
+  40108b:	0f b6 0c 03          	movzbl (%rbx,%rax,1),%ecx
+  40108f:	88 0c 24             	mov    %cl,(%rsp)
+  401092:	48 8b 14 24          	mov    (%rsp),%rdx
+  401096:	83 e2 0f             	and    $0xf,%edx
+  401099:	0f b6 92 b0 24 40 00 	movzbl 0x4024b0(%rdx),%edx
+  4010a0:	88 54 04 10          	mov    %dl,0x10(%rsp,%rax,1)
+  4010a4:	48 83 c0 01          	add    $0x1,%rax
+  4010a8:	48 83 f8 06          	cmp    $0x6,%rax
+  4010ac:	75 dd                	jne    40108b <phase_5+0x29>
+  4010ae:	c6 44 24 16 00       	movb   $0x0,0x16(%rsp)
+  4010b3:	be 5e 24 40 00       	mov    $0x40245e,%esi
+  4010b8:	48 8d 7c 24 10       	lea    0x10(%rsp),%rdi
+  4010bd:	e8 76 02 00 00       	call   401338 <strings_not_equal>
+  4010c2:	85 c0                	test   %eax,%eax
+  4010c4:	74 13                	je     4010d9 <phase_5+0x77>
+  4010c6:	e8 6f 03 00 00       	call   40143a <explode_bomb>
+  4010cb:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+  4010d0:	eb 07                	jmp    4010d9 <phase_5+0x77>
+  4010d2:	b8 00 00 00 00       	mov    $0x0,%eax
+  4010d7:	eb b2                	jmp    40108b <phase_5+0x29>
+  4010d9:	48 8b 44 24 18       	mov    0x18(%rsp),%rax
+  4010de:	64 48 33 04 25 28 00 	xor    %fs:0x28,%rax
+  4010e5:	00 00 
+  4010e7:	74 05                	je     4010ee <phase_5+0x8c>
+  4010e9:	e8 42 fa ff ff       	call   400b30 <__stack_chk_fail@plt>
+  4010ee:	48 83 c4 20          	add    $0x20,%rsp
+  4010f2:	5b                   	pop    %rbx
+  4010f3:	c3                   	ret
+```
+
+- `call   40131b <string_length>` & `cmp    $0x6,%eax`
+
+    The input must be a string of **exactly six characters**.
+
+- `40108b` $\sim$ `4010ac` (loop body)
+
+    For each character `input[i]`:
+    1. Take its low‑order 4 bits (`input[i] & 0xF`) as an index ($0 \sim 15$).
+    2. Use that index to look up a character from a table stored at address `0x4024b0`.
+    3. Store the looked‑up character into an output buffer on the stack.
+
+    Examining the table `(gdb) x/s 0x4024b0`, get `maduiersnfotvbylSo you think you can stop the bomb with ctrl-c, do you?`. The relevant part is the first 16 characters: `maduiersnfotvbyl`.
+
+    The converted six‑character string must equal the string at `0x40245e`. Checking `(gdb) x/s 0x40245e`, get `flyers`.
+
+    Hence the condition for each position $i$ is: `table[input[i] & 0xF] == "flyers"[i]`
+
+Therefore, the answer is `ionefg`.
+
+## Phase_6
+
+```Assembly
+00000000004010f4 <phase_6>:
+  4010f4:	41 56                	push   %r14
+  4010f6:	41 55                	push   %r13
+  4010f8:	41 54                	push   %r12
+  4010fa:	55                   	push   %rbp
+  4010fb:	53                   	push   %rbx
+  4010fc:	48 83 ec 50          	sub    $0x50,%rsp
+  401100:	49 89 e5             	mov    %rsp,%r13
+  401103:	48 89 e6             	mov    %rsp,%rsi
+  401106:	e8 51 03 00 00       	call   40145c <read_six_numbers>
+  40110b:	49 89 e6             	mov    %rsp,%r14
+  40110e:	41 bc 00 00 00 00    	mov    $0x0,%r12d
+  401114:	4c 89 ed             	mov    %r13,%rbp
+  401117:	41 8b 45 00          	mov    0x0(%r13),%eax
+  40111b:	83 e8 01             	sub    $0x1,%eax
+  40111e:	83 f8 05             	cmp    $0x5,%eax
+  401121:	76 05                	jbe    401128 <phase_6+0x34>
+  401123:	e8 12 03 00 00       	call   40143a <explode_bomb>
+  401128:	41 83 c4 01          	add    $0x1,%r12d
+  40112c:	41 83 fc 06          	cmp    $0x6,%r12d
+  401130:	74 21                	je     401153 <phase_6+0x5f>
+  401132:	44 89 e3             	mov    %r12d,%ebx
+  401135:	48 63 c3             	movslq %ebx,%rax
+  401138:	8b 04 84             	mov    (%rsp,%rax,4),%eax
+  40113b:	39 45 00             	cmp    %eax,0x0(%rbp)
+  40113e:	75 05                	jne    401145 <phase_6+0x51>
+  401140:	e8 f5 02 00 00       	call   40143a <explode_bomb>
+  401145:	83 c3 01             	add    $0x1,%ebx
+  401148:	83 fb 05             	cmp    $0x5,%ebx
+  40114b:	7e e8                	jle    401135 <phase_6+0x41>
+  40114d:	49 83 c5 04          	add    $0x4,%r13
+  401151:	eb c1                	jmp    401114 <phase_6+0x20>
+  401153:	48 8d 74 24 18       	lea    0x18(%rsp),%rsi
+  401158:	4c 89 f0             	mov    %r14,%rax
+  40115b:	b9 07 00 00 00       	mov    $0x7,%ecx
+  401160:	89 ca                	mov    %ecx,%edx
+  401162:	2b 10                	sub    (%rax),%edx
+  401164:	89 10                	mov    %edx,(%rax)
+  401166:	48 83 c0 04          	add    $0x4,%rax
+  40116a:	48 39 f0             	cmp    %rsi,%rax
+  40116d:	75 f1                	jne    401160 <phase_6+0x6c>
+  40116f:	be 00 00 00 00       	mov    $0x0,%esi
+  401174:	eb 21                	jmp    401197 <phase_6+0xa3>
+  401176:	48 8b 52 08          	mov    0x8(%rdx),%rdx
+  40117a:	83 c0 01             	add    $0x1,%eax
+  40117d:	39 c8                	cmp    %ecx,%eax
+  40117f:	75 f5                	jne    401176 <phase_6+0x82>
+  401181:	eb 05                	jmp    401188 <phase_6+0x94>
+  401183:	ba d0 32 60 00       	mov    $0x6032d0,%edx
+  401188:	48 89 54 74 20       	mov    %rdx,0x20(%rsp,%rsi,2)
+  40118d:	48 83 c6 04          	add    $0x4,%rsi
+  401191:	48 83 fe 18          	cmp    $0x18,%rsi
+  401195:	74 14                	je     4011ab <phase_6+0xb7>
+  401197:	8b 0c 34             	mov    (%rsp,%rsi,1),%ecx
+  40119a:	83 f9 01             	cmp    $0x1,%ecx
+  40119d:	7e e4                	jle    401183 <phase_6+0x8f>
+  40119f:	b8 01 00 00 00       	mov    $0x1,%eax
+  4011a4:	ba d0 32 60 00       	mov    $0x6032d0,%edx
+  4011a9:	eb cb                	jmp    401176 <phase_6+0x82>
+  4011ab:	48 8b 5c 24 20       	mov    0x20(%rsp),%rbx
+  4011b0:	48 8d 44 24 28       	lea    0x28(%rsp),%rax
+  4011b5:	48 8d 74 24 50       	lea    0x50(%rsp),%rsi
+  4011ba:	48 89 d9             	mov    %rbx,%rcx
+  4011bd:	48 8b 10             	mov    (%rax),%rdx
+  4011c0:	48 89 51 08          	mov    %rdx,0x8(%rcx)
+  4011c4:	48 83 c0 08          	add    $0x8,%rax
+  4011c8:	48 39 f0             	cmp    %rsi,%rax
+  4011cb:	74 05                	je     4011d2 <phase_6+0xde>
+  4011cd:	48 89 d1             	mov    %rdx,%rcx
+  4011d0:	eb eb                	jmp    4011bd <phase_6+0xc9>
+  4011d2:	48 c7 42 08 00 00 00 	movq   $0x0,0x8(%rdx)
+  4011d9:	00 
+  4011da:	bd 05 00 00 00       	mov    $0x5,%ebp
+  4011df:	48 8b 43 08          	mov    0x8(%rbx),%rax
+  4011e3:	8b 00                	mov    (%rax),%eax
+  4011e5:	39 03                	cmp    %eax,(%rbx)
+  4011e7:	7d 05                	jge    4011ee <phase_6+0xfa>
+  4011e9:	e8 4c 02 00 00       	call   40143a <explode_bomb>
+  4011ee:	48 8b 5b 08          	mov    0x8(%rbx),%rbx
+  4011f2:	83 ed 01             	sub    $0x1,%ebp
+  4011f5:	75 e8                	jne    4011df <phase_6+0xeb>
+  4011f7:	48 83 c4 50          	add    $0x50,%rsp
+  4011fb:	5b                   	pop    %rbx
+  4011fc:	5d                   	pop    %rbp
+  4011fd:	41 5c                	pop    %r12
+  4011ff:	41 5d                	pop    %r13
+  401201:	41 5e                	pop    %r14
+  401203:	c3                   	ret
+```
+
+- `4010f4` $\sim$ `40110e`
+
+    Calls `read_six_numbers` to read six integers into an array on the stack.
+
+- `401114` $\sim$ `401151`
+
+    The double loop checks `1 <= number[i] <= 6` (subtracting 1 converts the range check into an unsigned comparison with 5) and ensures all six numbers are distinct.
+
+- `401153` $\sim$ `40116d`
+
+    Each number is transformed as `number[i] = 7 - number[i]`
+
+- `40116f` $\sim$ `4011a9`
+
+    The starting address `0x6032d0` is examined. Inspection via `(gdb) x/128x 0x6032d0` reveals a linked-list structure.
+
+    ```
+    0x6032d0 <node1>:       0x4c    0x01    0x00    0x00    0x01    0x00    0x00    0x00
+    0x6032d8 <node1+8>:     0xe0    0x32    0x60    0x00    0x00    0x00    0x00    0x00
+    0x6032e0 <node2>:       0xa8    0x00    0x00    0x00    0x02    0x00    0x00    0x00
+    0x6032e8 <node2+8>:     0xf0    0x32    0x60    0x00    0x00    0x00    0x00    0x00
+    0x6032f0 <node3>:       0x9c    0x03    0x00    0x00    0x03    0x00    0x00    0x00
+    0x6032f8 <node3+8>:     0x00    0x33    0x60    0x00    0x00    0x00    0x00    0x00
+    0x603300 <node4>:       0xb3    0x02    0x00    0x00    0x04    0x00    0x00    0x00
+    0x603308 <node4+8>:     0x10    0x33    0x60    0x00    0x00    0x00    0x00    0x00
+    0x603310 <node5>:       0xdd    0x01    0x00    0x00    0x05    0x00    0x00    0x00
+    0x603318 <node5+8>:     0x20    0x33    0x60    0x00    0x00    0x00    0x00    0x00
+    0x603320 <node6>:       0xbb    0x01    0x00    0x00    0x06    0x00    0x00    0x00
+    0x603328 <node6+8>:     0x00    0x00    0x00    0x00    0x00    0x00    0x00    0x00
+    ```
+
+    Each node occupies 16 bits (value (4 bits), id (4 bits) address (8 bits)) organized in Little-Endian format. This structure clearly defines a singly linked list.
+
+    |node $i$|value|address|next pointer|
+    |:--:|:--:|:--:|:--:|
+    |$1$|$\texttt{0x14c}$|$\texttt{0x6032d0}$|$\texttt{0x6032e0}$|
+    |$2$|$\texttt{0xa8}$|$\texttt{0x6032e0}$|$\texttt{0x6032f0}$|
+    |$3$|$\texttt{0x39c}$|$\texttt{0x6032f0}$|$\texttt{0x603300}$|
+    |$4$|$\texttt{0x2b3}$|$\texttt{0x603300}$|$\texttt{0x603310}$|
+    |$5$|$\texttt{0x1dd}$|$\texttt{0x603310}$|$\texttt{0x603320}$|
+    |$6$|$\texttt{0x1bb}$|$\texttt{0x603320}$|$\texttt{NULL}$|
+
+    For each transformed `number[i]`, if `number[i] <= 1`, the head node is used directly; otherwise, a loop traverses the list to select the `number[i]`-th node.
+
+- `4011ab` $\sim$ `4011d9`
+
+    The code rebuilds the linked list according to the order specified by the transformed `number[i]` values.
+
+    - **Register roles**
+        
+        - `%rbx` Address of the new head node (read from `node_ptrs[0]` on the stack)
+
+        - `%rcx` Address of the current node being processed
+
+        - `%rdx` Address of the next node (read from the pointer array on the stack)
+
+        - `%rax` Points to the storage location of the next node pointer **in the stack array**
+    
+    - **Instructions**
+
+        - `mov %rbx,%rcx` Set the current node to the head node
+        
+        - `mov (%rax),%rdx` Read the address of the next node from the stack
+        
+        - `mov %rdx,0x8(%rcx)` Make the current node point to the next node
+
+- `4011da` $\sim$ `4011f5`
+
+    `cmp    %eax,(%rbx)` This ensures the final list is sorted in non‑increasing order by the integer values stored in the nodes.
+
+
+The original values in the list are $[\texttt{0x14c},\texttt{0xa8},\texttt{0x39c},\texttt{0x2b3},\texttt{0x1dd},\texttt{0x1bb}]$. When sorted in descending order by value, the corresponding node IDs are $[3,4,5,6,1,2]$. This ID order represents the **transformed** input. Since the transformation is `num[i] = 7 - original[i]`, we reverse it to obtain the original input `4,3,2,1,6,5`.
+
+## secret_phase
+
+```assembly
+00000000004015c4 <phase_defused>:
+  4015c4:	48 83 ec 78          	sub    $0x78,%rsp
+  4015c8:	64 48 8b 04 25 28 00 	mov    %fs:0x28,%rax
+  4015cf:	00 00 
+  4015d1:	48 89 44 24 68       	mov    %rax,0x68(%rsp)
+  4015d6:	31 c0                	xor    %eax,%eax
+  4015d8:	83 3d 81 21 20 00 06 	cmpl   $0x6,0x202181(%rip)        # 603760 <num_input_strings>
+  4015df:	75 5e                	jne    40163f <phase_defused+0x7b>
+  4015e1:	4c 8d 44 24 10       	lea    0x10(%rsp),%r8
+  4015e6:	48 8d 4c 24 0c       	lea    0xc(%rsp),%rcx
+  4015eb:	48 8d 54 24 08       	lea    0x8(%rsp),%rdx
+  4015f0:	be 19 26 40 00       	mov    $0x402619,%esi
+  4015f5:	bf 70 38 60 00       	mov    $0x603870,%edi
+  4015fa:	e8 f1 f5 ff ff       	call   400bf0 <__isoc99_sscanf@plt>
+  4015ff:	83 f8 03             	cmp    $0x3,%eax
+  401602:	75 31                	jne    401635 <phase_defused+0x71>
+  401604:	be 22 26 40 00       	mov    $0x402622,%esi
+  401609:	48 8d 7c 24 10       	lea    0x10(%rsp),%rdi
+  40160e:	e8 25 fd ff ff       	call   401338 <strings_not_equal>
+  401613:	85 c0                	test   %eax,%eax
+  401615:	75 1e                	jne    401635 <phase_defused+0x71>
+  401617:	bf f8 24 40 00       	mov    $0x4024f8,%edi
+  40161c:	e8 ef f4 ff ff       	call   400b10 <puts@plt>
+  401621:	bf 20 25 40 00       	mov    $0x402520,%edi
+  401626:	e8 e5 f4 ff ff       	call   400b10 <puts@plt>
+  40162b:	b8 00 00 00 00       	mov    $0x0,%eax
+  401630:	e8 0d fc ff ff       	call   401242 <secret_phase>
+  401635:	bf 58 25 40 00       	mov    $0x402558,%edi
+  40163a:	e8 d1 f4 ff ff       	call   400b10 <puts@plt>
+  40163f:	48 8b 44 24 68       	mov    0x68(%rsp),%rax
+  401644:	64 48 33 04 25 28 00 	xor    %fs:0x28,%rax
+  40164b:	00 00 
+  40164d:	74 05                	je     401654 <phase_defused+0x90>
+  40164f:	e8 dc f4 ff ff       	call   400b30 <__stack_chk_fail@plt>
+  401654:	48 83 c4 78          	add    $0x78,%rsp
+  401658:	c3                   	ret
+  401659:	90                   	nop
+  40165a:	90                   	nop
+  40165b:	90                   	nop
+  40165c:	90                   	nop
+  40165d:	90                   	nop
+  40165e:	90                   	nop
+  40165f:	90                   	nop
+```
+
+The existence of a **secret_phase** can be identified by examining the `<phase_defused>` function. When inspecting at address `0x402619` with `(gdb) x/s 0x402619`, the format string `"%d %d %s"` is revealed. 
+
+To investigate further, set a breakpoint at `0x4015fa` using `(gdb) b *0x4015fa`. After running the bomb executable and providing the correct solution for the earlier phases, we can examine the content at address `0x603870` with `(gdb) x/s 0x603870` (since the breakpoint is triggered during phase_4). This reveals that the `"%d %d %s"` format corresponds to the **fourth phase**, and we need to determine the correct string to enter along with the two integers.
+
+The code segment `lea 0x10(%rsp),%rdi` loads the address of the user-supplied string (the third argument) into `%rdi`, while `mov $0x402622,%esi` loads the address of the expected ciphertext into `%esi`. By examining memory with `(gdb) x/s 0x402622`, we obtain the string `DrEvil`. This is the secret password needed to unlock the hidden phase.
+
+Thus, to pass phase_4 and activate the secret_phase, we must append `DrEvil` as a third input after the two integer answers. One complete input sequence for the entire bomb could be:
+
+```
+Border relations with Canada have never been better.
+1 2 4 8 16 32
+0 207
+0 0 DrEvil
+ionefg
+4 3 2 1 6 5
+``
+
+---
+
+```assembly
+0000000000401204 <fun7>:
+  401204:	48 83 ec 08          	sub    $0x8,%rsp
+  401208:	48 85 ff             	test   %rdi,%rdi
+  40120b:	74 2b                	je     401238 <fun7+0x34>
+  40120d:	8b 17                	mov    (%rdi),%edx
+  40120f:	39 f2                	cmp    %esi,%edx
+  401211:	7e 0d                	jle    401220 <fun7+0x1c>
+  401213:	48 8b 7f 08          	mov    0x8(%rdi),%rdi
+  401217:	e8 e8 ff ff ff       	call   401204 <fun7>
+  40121c:	01 c0                	add    %eax,%eax
+  40121e:	eb 1d                	jmp    40123d <fun7+0x39>
+  401220:	b8 00 00 00 00       	mov    $0x0,%eax
+  401225:	39 f2                	cmp    %esi,%edx
+  401227:	74 14                	je     40123d <fun7+0x39>
+  401229:	48 8b 7f 10          	mov    0x10(%rdi),%rdi
+  40122d:	e8 d2 ff ff ff       	call   401204 <fun7>
+  401232:	8d 44 00 01          	lea    0x1(%rax,%rax,1),%eax
+  401236:	eb 05                	jmp    40123d <fun7+0x39>
+  401238:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+  40123d:	48 83 c4 08          	add    $0x8,%rsp
+  401241:	c3                   	ret
+0000000000401242 <secret_phase>:
+  401242:	53                   	push   %rbx
+  401243:	e8 56 02 00 00       	call   40149e <read_line>
+  401248:	ba 0a 00 00 00       	mov    $0xa,%edx
+  40124d:	be 00 00 00 00       	mov    $0x0,%esi
+  401252:	48 89 c7             	mov    %rax,%rdi
+  401255:	e8 76 f9 ff ff       	call   400bd0 <strtol@plt>
+  40125a:	48 89 c3             	mov    %rax,%rbx
+  40125d:	8d 40 ff             	lea    -0x1(%rax),%eax
+  401260:	3d e8 03 00 00       	cmp    $0x3e8,%eax
+  401265:	76 05                	jbe    40126c <secret_phase+0x2a>
+  401267:	e8 ce 01 00 00       	call   40143a <explode_bomb>
+  40126c:	89 de                	mov    %ebx,%esi
+  40126e:	bf f0 30 60 00       	mov    $0x6030f0,%edi
+  401273:	e8 8c ff ff ff       	call   401204 <fun7>
+  401278:	83 f8 02             	cmp    $0x2,%eax
+  40127b:	74 05                	je     401282 <secret_phase+0x40>
+  40127d:	e8 b8 01 00 00       	call   40143a <explode_bomb>
+  401282:	bf 38 24 40 00       	mov    $0x402438,%edi
+  401287:	e8 84 f8 ff ff       	call   400b10 <puts@plt>
+  40128c:	e8 33 03 00 00       	call   4015c4 <phase_defused>
+  401291:	5b                   	pop    %rbx
+  401292:	c3                   	ret
+  401293:	90                   	nop
+  401294:	90                   	nop
+  401295:	90                   	nop
+  401296:	90                   	nop
+  401297:	90                   	nop
+  401298:	90                   	nop
+  401299:	90                   	nop
+  40129a:	90                   	nop
+  40129b:	90                   	nop
+  40129c:	90                   	nop
+  40129d:	90                   	nop
+  40129e:	90                   	nop
+  40129f:	90                   	nop
+```
+
+- `lea    -0x1(%rax),%eax` & `cmp    $0x3e8,%eax`
+    
+    The range of the input number must be $[1,1001]$.
+
+- `mov    %ebx,%esi` & `mov    $0x6030f0,%edi` & `call   401204 <fun7>` & `cmp    $0x2,%eax`
+
+    The condition for passing the secret phase is that the return value of `fun7(0x6030f0, input)` must equal **2**.
+
+- `<fun7>`
+
+    Using `(gdb) x/60x 0x6030f0` to inspect memory, we obtain the following data:
+
+    ```assembly
+    0x6030f0 <n1>:  0x0000000000000024      0x0000000000603110
+    0x603100 <n1+16>:       0x0000000000603130      0x0000000000000000
+    0x603110 <n21>: 0x0000000000000008      0x0000000000603190
+    0x603120 <n21+16>:      0x0000000000603150      0x0000000000000000
+    0x603130 <n22>: 0x0000000000000032      0x0000000000603170
+    0x603140 <n22+16>:      0x00000000006031b0      0x0000000000000000
+    0x603150 <n32>: 0x0000000000000016      0x0000000000603270
+    0x603160 <n32+16>:      0x0000000000603230      0x0000000000000000
+    0x603170 <n33>: 0x000000000000002d      0x00000000006031d0
+    0x603180 <n33+16>:      0x0000000000603290      0x0000000000000000
+    0x603190 <n31>: 0x0000000000000006      0x00000000006031f0
+    0x6031a0 <n31+16>:      0x0000000000603250      0x0000000000000000
+    0x6031b0 <n34>: 0x000000000000006b      0x0000000000603210
+    0x6031c0 <n34+16>:      0x00000000006032b0      0x0000000000000000
+    0x6031d0 <n45>: 0x0000000000000028      0x0000000000000000
+    0x6031e0 <n45+16>:      0x0000000000000000      0x0000000000000000
+    0x6031f0 <n41>: 0x0000000000000001      0x0000000000000000
+    0x603200 <n41+16>:      0x0000000000000000      0x0000000000000000
+    0x603210 <n47>: 0x0000000000000063      0x0000000000000000
+    0x603220 <n47+16>:      0x0000000000000000      0x0000000000000000
+    0x603230 <n44>: 0x0000000000000023      0x0000000000000000
+    0x603240 <n44+16>:      0x0000000000000000      0x0000000000000000
+    0x603250 <n42>: 0x0000000000000007      0x0000000000000000
+    0x603260 <n42+16>:      0x0000000000000000      0x0000000000000000
+    0x603270 <n43>: 0x0000000000000014      0x0000000000000000
+    0x603280 <n43+16>:      0x0000000000000000      0x0000000000000000
+    0x603290 <n46>: 0x000000000000002f      0x0000000000000000
+    0x6032a0 <n46+16>:      0x0000000000000000      0x0000000000000000
+    0x6032b0 <n48>: 0x00000000000003e9      0x0000000000000000
+    0x6032c0 <n48+16>:      0x0000000000000000      0x0000000000000000
+    ```
+
+    A BST can be constructed at address `0x6030f0`:
+
+    ```
+                36 (n1)
+               /      \
+              /        \
+            8 (n21)    50 (n22)
+           /   \       /    \
+          /     \     /      \
+       6 (n31) 22(n32) 45(n33) 107(n34)
+       /  \    /  \    /  \    /   \
+     1    7  20   35  40  47  99  1001
+    (n41)(n42)(n43)(n44)(n45)(n46)(n47)(n48)
+    ```
+
+    Translating the assembly logic of `fun7` into C language:
+
+    ```C
+    int func7 (T *u,int target)
+    {
+        if (u == NULL) return -1;
+        if (&u <= target)
+        {
+            if (&u == target) return 0;
+            else return 2 * func7 (p -> right,target) + 1;
+        }
+        else return 2 * func7 (p -> left,target);
+    }
+    ```
+
+    The function encodes the search path as a binary number. To obtain a return value of 2, the recursive sequence must satisfy $2 \times (2 \times 0 + 1) = 2$. This corresponds to the search path **left → right → match**: from root (36) go left to 8, then right to 22, where the value is found.
+    
+    Thus, the input that satisfies `fun7(0x6030f0, input) == 2` is `22`.
+
+----
+
+Final answer:
+
+```
+Border relations with Canada have never been better.
+1 2 4 8 16 32
+0 207
+0 0 DrEvil
+ionefg
+4 3 2 1 6 5
+22
+```

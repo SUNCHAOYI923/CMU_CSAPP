@@ -367,6 +367,8 @@ Shift instructions can shift by an immediate value, or by a value placed in the 
 
     When `S == D`, $\texttt{ZF} = 1$.
 
+    It will set the condition codes based on the result of $D - S$.
+
 - $\texttt{test\quad S \quad D}$
     
     Similar to `and`, but it only sets the condition codes without changing the value of the destination register.
