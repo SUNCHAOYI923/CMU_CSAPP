@@ -513,3 +513,15 @@ Three protection mechanisms to thwart buffer overflow attacks:
 `%rbp` is base pointer/frame pointer dynamic stack frame
 
 ### Floating-point Code
+
+# Chapter 4 Processor Architecture
+
+## Logic Design and Hardware Control Language (HCL)
+
+### Logic Gate
+
+<img src="pic/7.png" width="50%" height="50%">
+
+### CMOS
+
+<img src="pic/8.png" width="50%" height="50%">
