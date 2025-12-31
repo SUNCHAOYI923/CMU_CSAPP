@@ -525,3 +525,18 @@ Three protection mechanisms to thwart buffer overflow attacks:
 ### CMOS
 
 <img src="pic/8.png" width="50%" height="50%">
+
+### Process
+
+$\texttt{Fetch} \to \texttt{Decode} \to \texttt{Execute} \to \texttt{Memory} \to \texttt{Write Back} \to \texttt{Update}$
+
+For Y86-84 :
+
+<img src="pic/9.png" width="70%" height="70%">
+
+### Pipelining
+
+- **Throughput** 
+    the number of instructions in one second.
+
+    GIPS: Giga-Instructions Per Second
