@@ -540,3 +540,86 @@ For Y86-84 :
     the number of instructions in one second.
 
     GIPS: Giga-Instructions Per Second
+
+- **Circuit Retiming**
+
+    Repositions registers within a design to optimize performance or area, without altering the system’s input/output behavior. It changes the state encoding by moving delays (registers) across combinational logic elements.
+
+<img src="pic/10.png" width="70%" height="70%">
+
+### Hazards
+
+The dependency between instructions may lead to incorrect computation results.
+
+#### Data Hazards
+
+- **Stalling** 
+
+    **Stalling** prevents data hazards by pausing the pipeline until required operands are ready. This approach is simple but reduces performance.
+
+- **Data Forwarding** (**Bypassing**)
+
+    **Data forwarding** allows a result computed in a later pipeline stage to be passed directly to an earlier stage as a source operand.
+
+- **Load/Use Hazards**
+
+    A **load/use hazards** occurs when an instruction requires a value that is still being loaded from memory by the previous instruction. Since the memory read completes late in the pipeline, forwarding cannot resolve the dependency in time, causing a stall.
+
+#### Control Hazards
+
+**Control hazards** occur when the processor cannot determine the next instruction's address during the fetch stage. In a pipelined processor, this typically happens for `ret` instructions and mispredicted conditional jumps.
+
+- `ret` Inserting bubbles to wait for the return address to be determined.
+
+- **Conditional Jump** Branch mispredictions are handled by cancelling the erroneously fetched instructions through the insertion of pipeline bubbles (or via instruction squashing) in the decode and execute stages.
+
+### Pipelined Y86-64 Implementations
+
+#### Fetch Stage
+
+1. Sequential Execution
+
+`halt`, `nop`, `rrmovq`, `irmovq` , `mrmovq`, `Opq`, `pushq`, `popq`, `covXX`, `addq`
+
+2. Jump Execution
+
+`call`, `jxx` (The Select PC mechanism is employed to correct branch mispredictions.)
+
+3. `ret`
+
+#### Decode Stage
+
+The selection logic chooses between the merged `valA`/`valP` signals and one of five forwarding sources (`e_valE`, `m_valM`, `M_valE`, `W_valM`, or `W_valE`) based on the instruction type and hazard detection. If no forwarding is triggered, `d_rvalA` (the register file read) is used as the default value.
+
+
+### Pipeline Control Logic
+
+- **Stall** 
+
+    Keep the state of the pipeline registers unchanged. When the stall signal is set to 1, the register will retain its previous state.
+
+- **Insert Bubbles** 
+
+    Setting the state of the pipeline registers to a value equivalent to a `nop` instruction. When the bubble signal is set to 1, the state of the register will be set to a fixed reset configuration.
+
+#### Load/Use Data 
+
+A one-cycle pipeline stall is required between an instruction that reads a memory value in the execute stage and a subsequent instruction that uses that value in the decode stage.
+
+#### Mispredicted Branches
+
+When a branch is mispredicted as taken, the pipeline must squash the incorrectly fetched instructions from the target path and redirect fetching to the correct fall-through address.
+
+#### Processing `ret`
+
+The pipeline must stall until the `ret` instruction reaches the write-back stage.
+
+#### Exception Handling
+
+When an instruction triggers an exception, all subsequent instructions must be prevented from updating programmer-visible state, and execution must halt once the exception-causing instruction reaches the write-back stage.
+
+| Condition            | F       | D       | E       | M       | W       |
+|----------------------|---------|---------|---------|---------|---------|
+| Handling `ret`       | Stall   | Bubble  | Normal  | Normal  | Normal  |
+| Load/Use Hazard      | Stall   | Stall   | Bubble  | Normal  | Normal  |
+| Mispredicted Branch  | Normal  | Bubble  | Bubble  | Normal  | Normal  |
