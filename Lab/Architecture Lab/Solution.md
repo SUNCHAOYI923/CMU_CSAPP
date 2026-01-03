@@ -214,3 +214,121 @@ Changes to memory:
 0x01f0: 0x0000000000000000      0x000000000000006f
 0x01f8: 0x0000000000000000      0x0000000000000013
 ```
+
+## Part B
+
+To fix the `undefined reference to matherr` error, **comment out** the unused `matherr` function declaration in `ssim.c`.
+
+
+The goal is to extend the SEQ processor to support the iaddq instruction, which adds an immediate value to a register `iaddq V, rB` → `rB = rB + V`.
+
+### Fetch Stage
+
+```hcl
+bool instr_valid = icode in 
+	{ INOP, IHALT, IRRMOVQ, IIRMOVQ, IRMMOVQ, IMRMOVQ,
+	       IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ, IIADDQ };
+bool need_regids =
+	icode in { IRRMOVQ, IOPQ, IPUSHQ, IPOPQ, 
+		     IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ };
+bool need_valC =
+	icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL,IIADDQ };
+```
+
+- Declare `IIADDQ` as a valid instruction so the processor recognizes it.
+
+- `IIADDQ` needs a register byte to specify `rB` (the destination register).
+
+- `IIADDQ` requires an immediate value `V`, which is stored in the constant word `valC`.
+
+### Decode Stage
+
+```hcl
+word srcB = [
+	icode in { IOPQ, IRMMOVQ, IMRMOVQ, IIADDQ } : rB;
+	icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
+	1 : RNONE;  # Don't need register
+];
+word dstE = [
+	icode in { IRRMOVQ } && Cnd : rB;
+	icode in { IIRMOVQ, IOPQ, IIADDQ } : rB;
+	icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
+	1 : RNONE;  # Don't write any register
+];
+```
+
+- `IIADDQ` needs to read register `rB` to get its current value (`valB = Reg[rB]`).
+
+- `IIADDQ` writes the result back to register `rB` (through `dstE`).
+
+### Execute Stage
+
+```hcl
+word aluA = [
+	icode in { IRRMOVQ, IOPQ } : valA;
+	icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ } : valC;
+	icode in { ICALL, IPUSHQ } : -8;
+	icode in { IRET, IPOPQ } : 8;
+	# Other instructions don't need ALU
+];
+
+## Select input B to ALU
+word aluB = [
+	icode in { IRMMOVQ, IMRMOVQ, IOPQ, ICALL, 
+		      IPUSHQ, IRET, IPOPQ, IIADDQ } : valB;
+	icode in { IRRMOVQ, IIRMOVQ } : 0;
+	# Other instructions don't need ALU
+];
+bool set_cc = icode in { IOPQ, IIADDQ };
+```
+
+- For `IIADDQ`, `aluA` uses the immediate value `valC`.
+
+- `aluB` uses `valB` (the current value of register `rB`).
+
+- Like arithmetic operations (`IOPQ`), iaddq should update the condition codes (`ZF`, `SF`, `OF`).
+
+### Memory Stage & Program Counter Update 
+
+No need to update.
+
+### Run Verification Tests
+
+```bash
+(cd ../y86-code; make testssim)
+(cd ../ptest; make SIM=../seq/ssim)
+(cd ../ptest; make SIM=../seq/ssim TFLAGS=-i)
+```
+
+### Expected Output
+
+All tests should pass with messages like:
+
+```bash
+asum.seq:ISA Check Succeeds
+asumr.seq:ISA Check Succeeds
+cjr.seq:ISA Check Succeeds
+j-cc.seq:ISA Check Succeeds
+poptest.seq:ISA Check Succeeds
+prog1.seq:ISA Check Succeeds
+prog2.seq:ISA Check Succeeds
+prog3.seq:ISA Check Succeeds
+prog4.seq:ISA Check Succeeds
+prog5.seq:ISA Check Succeeds
+prog6.seq:ISA Check Succeeds
+prog7.seq:ISA Check Succeeds
+prog8.seq:ISA Check Succeeds
+pushquestion.seq:ISA Check Succeeds
+pushtest.seq:ISA Check Succeeds
+ret-hazard.seq:ISA Check Succeeds
+
+All 49 ISA Checks Succeed
+All 64 ISA Checks Succeed
+All 22 ISA Checks Succeed
+All 600 ISA Checks Succeed
+
+All 58 ISA Checks Succeed
+All 96 ISA Checks Succeed
+All 22 ISA Checks Succeed
+All 756 ISA Checks Succeed
+```

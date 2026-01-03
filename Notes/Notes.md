@@ -534,6 +534,40 @@ For Y86-84 :
 
 <img src="pic/9.png" width="70%" height="70%">
 
+1. Fetch
+
+    - Read instruction bytes from memory using PC:
+        - `icode:ifun` (instruction specifier)
+        - `rA, rB` (register specifiers)
+        - `valC` (8-byte constant)
+    - Compute next instruction address → `valP`
+
+2. Decode
+
+    - Read up to two operands from registers
+    - `rA, rB` → `valA, valB`
+    - For `popq`, `pushq`, `call`, `ret`: also read from `%rsp`
+
+3. Execute
+
+    - Compute (ALU/address/stack) → `valE`
+    - Set condition codes
+    - Conditional moves: check CC, update dest register
+    - Jumps: decide branch
+
+4. Memory
+
+    - Write to memory
+    - Read from memory → `valM`
+
+5. Write Back
+
+    - Write up to two results to registers
+
+6. Update
+
+    - Set PC to next instruction address
+
 ### Pipelining
 
 - **Throughput** 
