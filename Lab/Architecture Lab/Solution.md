@@ -332,3 +332,153 @@ All 96 ISA Checks Succeed
 All 22 ISA Checks Succeed
 All 756 ISA Checks Succeed
 ```
+
+## Part C
+
+### Command
+
+#### Compilation
+
+Note that each time you modify your `pipe-full.hcl` file, you can rebuild the simulator by typing `make psim VERSION=full`. Each time you modify your `ncopy.ys` program, you can rebuild the driver programs by typing `make drivers`. You can type `make VERSION=full` to rebuild the simulator and the driver programs.
+
+#### Test `pipe-full.hcl`
+
+```bash
+cd ../ptest; make SIM=../pipe/psim
+cd ../ptest; make SIM=../pipe/psim TFLAGS=-i
+```
+
+#### Test your code on a range of block lengths with the ISA simulator
+
+```bash
+./correctness.pl
+```
+#### Partial Score
+
+```bash
+./benchmark.pl
+```
+
+### Refference Solution
+
+- Some suggestions in the pdf
+
+    > Reordering instructions, replacing groups of instructions with single instructions, deleting some instructions, and adding other instructions. You may ﬁnd it useful to read about loop unrolling.
+
+First, add `IIADDQ` instruction support to `pipe-full.hcl` as required in Part B. Before proceeding to the next step, ensure that your implementation passes all tests similiar to Part B.
+
+Original CPE `Average CPE     15.18`. Then try to use `IIADDQ` in the `ncopy.ys`:
+
+```assembly
+Loop:	
+	mrmovq (%rdi), %r10	# read val from src...
+	rmmovq %r10, (%rsi)	# ...and store it to dst
+	andq %r10, %r10		# val <= 0?
+	jle Npos		# if so, goto Npos:
+	iaddq $1, %rax		# count++
+Npos:	
+	iaddq $-1, %rdx		# len--
+	iaddq $8, %rdi		# src++
+	iaddq $8, %rsi		# dst++
+	andq %rdx,%rdx		# len > 0?
+	jg Loop			# if so, goto Loop:
+```
+
+The current implementation achieves an ``Average CPE of 12.70``, but the performance score remains at ``0.0/60.0``.
+
+Loop unrolling was attempted to improve performance. After experimentation, $11 \times$ loop unrolling yields the maximum score of ``44.8/66.0`` corresponding to an ``Average CPE of 8.26``.
+
+First subtract the unroll factor from the length counter. If the result is negative, handle remaining elements separately. Otherwise, restore the counter and execute the unrolled loop.
+
+```assembly
+Loop:	
+	iaddq $-11, %rdx
+	jl add
+work1:
+	iaddq $11, %rdx
+	mrmovq (%rdi),%r8
+	rmmovq %r8, (%rsi)
+	andq %r8, %r8
+	jle work2
+	iaddq $1, %rax
+work2:
+	mrmovq 8(%rdi),%r8
+	rmmovq %r8, 8(%rsi)
+	andq %r8, %r8
+	jle work3
+	iaddq $1, %rax
+work3:
+	mrmovq 16(%rdi),%r8
+	rmmovq %r8, 16(%rsi)
+	andq %r8, %r8
+	jle work4
+	iaddq $1, %rax
+work4:
+	mrmovq 24(%rdi),%r8
+	rmmovq %r8, 24(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work5:
+	mrmovq 32(%rdi),%r8
+	rmmovq %r8, 32(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work6:
+	mrmovq 40(%rdi),%r8
+	rmmovq %r8, 40(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work7:
+	mrmovq 48(%rdi),%r8
+	rmmovq %r8, 48(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work8:
+	mrmovq 56(%rdi),%r8
+	rmmovq %r8, 56(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work9:
+	mrmovq 64(%rdi),%r8
+	rmmovq %r8, 64(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work10:
+	mrmovq 72(%rdi),%r8
+	rmmovq %r8, 72(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work11:
+	mrmovq 80(%rdi),%r8
+	rmmovq %r8, 80(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+modify:
+	iaddq $88,%rdi
+	iaddq $88,%rsi
+	iaddq $-11,%rdx
+	jge Loop
+add:
+	iaddq $11, %rdx
+remain:
+	je Done
+	mrmovq (%rdi), %r10
+	rmmovq %r10, (%rsi)
+	andq %r10, %r10
+	jle Npos
+	iaddq $1, %rax
+Npos:	
+	iaddq $-1, %rdx
+	iaddq $8, %rdi
+	iaddq $8, %rsi
+	andq %rdx,%rdx
+	jg remain	
+```

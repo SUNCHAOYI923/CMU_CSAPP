@@ -14,25 +14,102 @@
 ncopy:
 
 ##################################################################
-# You can modify this portion
-	# Loop header
+
 	xorq %rax,%rax		# count = 0;
 	andq %rdx,%rdx		# len <= 0?
 	jle Done		# if so, goto Done:
 
-Loop:	mrmovq (%rdi), %r10	# read val from src...
-	rmmovq %r10, (%rsi)	# ...and store it to dst
-	andq %r10, %r10		# val <= 0?
-	jle Npos		# if so, goto Npos:
-	irmovq $1, %r10
-	addq %r10, %rax		# count++
-Npos:	irmovq $1, %r10
-	subq %r10, %rdx		# len--
-	irmovq $8, %r10
-	addq %r10, %rdi		# src++
-	addq %r10, %rsi		# dst++
-	andq %rdx,%rdx		# len > 0?
-	jg Loop			# if so, goto Loop:
+Loop:	
+	iaddq $-11, %rdx
+	jl add
+work1:
+	iaddq $11, %rdx
+	mrmovq (%rdi),%r8
+	rmmovq %r8, (%rsi)
+	andq %r8, %r8
+	jle work2
+	iaddq $1, %rax
+work2:
+	mrmovq 8(%rdi),%r8
+	rmmovq %r8, 8(%rsi)
+	andq %r8, %r8
+	jle work3
+	iaddq $1, %rax
+work3:
+	mrmovq 16(%rdi),%r8
+	rmmovq %r8, 16(%rsi)
+	andq %r8, %r8
+	jle work4
+	iaddq $1, %rax
+work4:
+	mrmovq 24(%rdi),%r8
+	rmmovq %r8, 24(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work5:
+	mrmovq 32(%rdi),%r8
+	rmmovq %r8, 32(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work6:
+	mrmovq 40(%rdi),%r8
+	rmmovq %r8, 40(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work7:
+	mrmovq 48(%rdi),%r8
+	rmmovq %r8, 48(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work8:
+	mrmovq 56(%rdi),%r8
+	rmmovq %r8, 56(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work9:
+	mrmovq 64(%rdi),%r8
+	rmmovq %r8, 64(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work10:
+	mrmovq 72(%rdi),%r8
+	rmmovq %r8, 72(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+work11:
+	mrmovq 80(%rdi),%r8
+	rmmovq %r8, 80(%rsi)
+	andq %r8, %r8
+	jle modify
+	iaddq $1, %rax
+modify:
+	iaddq $88,%rdi
+	iaddq $88,%rsi
+	iaddq $-11,%rdx
+	jge Loop
+add:
+	iaddq $11, %rdx
+remain:
+	je Done
+	mrmovq (%rdi), %r10
+	rmmovq %r10, (%rsi)
+	andq %r10, %r10
+	jle Npos
+	iaddq $1, %rax
+Npos:	
+	iaddq $-1, %rdx
+	iaddq $8, %rdi
+	iaddq $8, %rsi
+	andq %rdx,%rdx
+	jg remain		
+
 ##################################################################
 # Do not modify the following section of code
 # Function epilogue.
