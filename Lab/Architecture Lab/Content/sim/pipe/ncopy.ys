@@ -15,100 +15,63 @@ ncopy:
 
 ##################################################################
 
-	xorq %rax,%rax		# count = 0;
-	andq %rdx,%rdx		# len <= 0?
-	jle Done		# if so, goto Done:
+	xorq %rax,%rax
+	iaddq $-4, %rdx
+	jl res1	
 
-Loop:	
-	iaddq $-11, %rdx
-	jl add
-work1:
-	iaddq $11, %rdx
+work1:	
 	mrmovq (%rdi),%r8
+	mrmovq 8(%rdi),%r9
 	rmmovq %r8, (%rsi)
 	andq %r8, %r8
 	jle work2
 	iaddq $1, %rax
 work2:
-	mrmovq 8(%rdi),%r8
-	rmmovq %r8, 8(%rsi)
-	andq %r8, %r8
+	rmmovq %r9,8(%rsi)
+	mrmovq 16(%rdi),%r10
+	andq %r9, %r9
 	jle work3
 	iaddq $1, %rax
 work3:
-	mrmovq 16(%rdi),%r8
-	rmmovq %r8, 16(%rsi)
-	andq %r8, %r8
+	rmmovq %r10,16(%rsi)
+	mrmovq 24(%rdi),%r11
+	andq %r10, %r10
 	jle work4
 	iaddq $1, %rax
 work4:
-	mrmovq 24(%rdi),%r8
-	rmmovq %r8, 24(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work5:
-	mrmovq 32(%rdi),%r8
-	rmmovq %r8, 32(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work6:
-	mrmovq 40(%rdi),%r8
-	rmmovq %r8, 40(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work7:
-	mrmovq 48(%rdi),%r8
-	rmmovq %r8, 48(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work8:
-	mrmovq 56(%rdi),%r8
-	rmmovq %r8, 56(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work9:
-	mrmovq 64(%rdi),%r8
-	rmmovq %r8, 64(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work10:
-	mrmovq 72(%rdi),%r8
-	rmmovq %r8, 72(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work11:
-	mrmovq 80(%rdi),%r8
-	rmmovq %r8, 80(%rsi)
-	andq %r8, %r8
+	rmmovq %r11,24(%rsi)
+	andq %r11, %r11
 	jle modify
 	iaddq $1, %rax
 modify:
-	iaddq $88,%rdi
-	iaddq $88,%rsi
-	iaddq $-11,%rdx
-	jge Loop
-add:
-	iaddq $11, %rdx
-remain:
-	je Done
-	mrmovq (%rdi), %r10
-	rmmovq %r10, (%rsi)
-	andq %r10, %r10
-	jle Npos
+	iaddq $32,%rdi
+	iaddq $32,%rsi
+	iaddq $-4,%rdx
+	jge work1
+res1:
+	iaddq $3, %rdx
+	jl Done
+	mrmovq (%rdi), %r8
+	mrmovq 8(%rdi), %r9
+	rmmovq %r8, (%rsi)
+	andq %r8, %r8
+	jle res2
 	iaddq $1, %rax
-Npos:	
+res2:	
 	iaddq $-1, %rdx
-	iaddq $8, %rdi
-	iaddq $8, %rsi
-	andq %rdx,%rdx
-	jg remain		
+	jl Done
+	mrmovq 16(%rdi), %r10
+	rmmovq %r9, 8(%rsi)
+	andq %r9, %r9
+	jle res3
+	iaddq $1, %rax
+res3:	
+	iaddq $-1, %rdx
+	jl Done
+	rmmovq %r10, 16(%rsi)
+	andq %r10, %r10
+	jle Done
+	iaddq $1, %rax
 
 ##################################################################
 # Do not modify the following section of code

@@ -386,16 +386,20 @@ Npos:
 
 The current implementation achieves an ``Average CPE of 12.70``, but the performance score remains at ``0.0/60.0``.
 
-Loop unrolling was attempted to improve performance. After experimentation, $11 \times$ loop unrolling yields the maximum score of ``44.8/66.0`` corresponding to an ``Average CPE of 8.26``.
+Loop unrolling was attempted to improve performance. After experimentation, $4 \times$ loop unrolling yields with ``Average CPE of 10.79``.
 
 First subtract the unroll factor from the length counter. If the result is negative, handle remaining elements separately. Otherwise, restore the counter and execute the unrolled loop.
 
 ```assembly
+	xorq %rax,%rax		# count = 0;
+	andq %rdx,%rdx		# len <= 0?
+	jle Done		# if so, goto Done:
+
 Loop:	
-	iaddq $-11, %rdx
+	iaddq $-4, %rdx
 	jl add
 work1:
-	iaddq $11, %rdx
+	iaddq $4, %rdx
 	mrmovq (%rdi),%r8
 	rmmovq %r8, (%rsi)
 	andq %r8, %r8
@@ -419,55 +423,13 @@ work4:
 	andq %r8, %r8
 	jle modify
 	iaddq $1, %rax
-work5:
-	mrmovq 32(%rdi),%r8
-	rmmovq %r8, 32(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work6:
-	mrmovq 40(%rdi),%r8
-	rmmovq %r8, 40(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work7:
-	mrmovq 48(%rdi),%r8
-	rmmovq %r8, 48(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work8:
-	mrmovq 56(%rdi),%r8
-	rmmovq %r8, 56(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work9:
-	mrmovq 64(%rdi),%r8
-	rmmovq %r8, 64(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work10:
-	mrmovq 72(%rdi),%r8
-	rmmovq %r8, 72(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-work11:
-	mrmovq 80(%rdi),%r8
-	rmmovq %r8, 80(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
 modify:
-	iaddq $88,%rdi
-	iaddq $88,%rsi
-	iaddq $-11,%rdx
+	iaddq $32,%rdi
+	iaddq $32,%rsi
+	iaddq $-4,%rdx
 	jge Loop
 add:
-	iaddq $11, %rdx
+	iaddq $4, %rdx
 remain:
 	je Done
 	mrmovq (%rdi), %r10
@@ -481,4 +443,66 @@ Npos:
 	iaddq $8, %rsi
 	andq %rdx,%rdx
 	jg remain	
+```
+
+To reduce data hazards in the pipeline, we employ **4-way loop unrolling** with **early loading** of data values by using additional registers (`%r8`, `%r9`, `%r10`, `%r11`) to pre‑fetch memory operands. The optimized implementation achieves an `average CPE of 8.07`.
+
+```assembly
+	xorq %rax,%rax
+	iaddq $-4, %rdx
+	jl res1	
+
+work1:	
+	mrmovq (%rdi),%r8
+	mrmovq 8(%rdi),%r9
+	rmmovq %r8, (%rsi)
+	andq %r8, %r8
+	jle work2
+	iaddq $1, %rax
+work2:
+	rmmovq %r9,8(%rsi)
+	mrmovq 16(%rdi),%r10
+	andq %r9, %r9
+	jle work3
+	iaddq $1, %rax
+work3:
+	rmmovq %r10,16(%rsi)
+	mrmovq 24(%rdi),%r11
+	andq %r10, %r10
+	jle work4
+	iaddq $1, %rax
+work4:
+	rmmovq %r11,24(%rsi)
+	andq %r11, %r11
+	jle modify
+	iaddq $1, %rax
+modify:
+	iaddq $32,%rdi
+	iaddq $32,%rsi
+	iaddq $-4,%rdx
+	jge work1
+res1:
+	iaddq $3, %rdx
+	jl Done
+	mrmovq (%rdi), %r8
+	mrmovq 8(%rdi), %r9
+	rmmovq %r8, (%rsi)
+	andq %r8, %r8
+	jle res2
+	iaddq $1, %rax
+res2:	
+	iaddq $-1, %rdx
+	jl Done
+	mrmovq 16(%rdi), %r10
+	rmmovq %r9, 8(%rsi)
+	andq %r9, %r9
+	jle res3
+	iaddq $1, %rax
+res3:	
+	iaddq $-1, %rdx
+	jl Done
+	rmmovq %r10, 16(%rsi)
+	andq %r10, %r10
+	jle Done
+	iaddq $1, %rax
 ```
