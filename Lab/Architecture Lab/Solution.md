@@ -388,121 +388,539 @@ The current implementation achieves an ``Average CPE of 12.70``, but the perform
 
 Loop unrolling was attempted to improve performance. After experimentation, $4 \times$ loop unrolling yields with ``Average CPE of 10.79``.
 
-First subtract the unroll factor from the length counter. If the result is negative, handle remaining elements separately. Otherwise, restore the counter and execute the unrolled loop.
+1. Default Register Initialization
 
-```assembly
-	xorq %rax,%rax		# count = 0;
-	andq %rdx,%rdx		# len <= 0?
-	jle Done		# if so, goto Done:
+    In Y86-64, registers are initialized to zero by default. Therefore, the explicit `xorq %rax,%rax` instruction can be omitted, reducing the instruction count.
+    
+2. Loop Unrolling
 
-Loop:	
-	iaddq $-4, %rdx
-	jl add
-work1:
-	iaddq $4, %rdx
-	mrmovq (%rdi),%r8
-	rmmovq %r8, (%rsi)
-	andq %r8, %r8
-	jle work2
-	iaddq $1, %rax
-work2:
-	mrmovq 8(%rdi),%r8
-	rmmovq %r8, 8(%rsi)
-	andq %r8, %r8
-	jle work3
-	iaddq $1, %rax
-work3:
-	mrmovq 16(%rdi),%r8
-	rmmovq %r8, 16(%rsi)
-	andq %r8, %r8
-	jle work4
-	iaddq $1, %rax
-work4:
-	mrmovq 24(%rdi),%r8
-	rmmovq %r8, 24(%rsi)
-	andq %r8, %r8
-	jle modify
-	iaddq $1, %rax
-modify:
-	iaddq $32,%rdi
-	iaddq $32,%rsi
-	iaddq $-4,%rdx
-	jge Loop
-add:
-	iaddq $4, %rdx
-remain:
-	je Done
-	mrmovq (%rdi), %r10
-	rmmovq %r10, (%rsi)
-	andq %r10, %r10
-	jle Npos
-	iaddq $1, %rax
-Npos:	
-	iaddq $-1, %rdx
-	iaddq $8, %rdi
-	iaddq $8, %rsi
-	andq %rdx,%rdx
-	jg remain	
-```
+    Subtract the unroll factor from the length counter. If the result is negative, handle remaining elements separately. Otherwise, restore the counter and execute the unrolled loop.
 
-To reduce data hazards in the pipeline, we employ **4-way loop unrolling** with **early loading** of data values by using additional registers (`%r8`, `%r9`, `%r10`, `%r11`) to pre‑fetch memory operands. The optimized implementation achieves an `average CPE of 8.07`.
+    ```assembly
+        andq %rdx,%rdx
+        jle Done
 
-```assembly
-	xorq %rax,%rax
-	iaddq $-4, %rdx
-	jl res1	
+    Loop:	
+        iaddq $-4, %rdx
+        jl add
+    work1:
+        iaddq $4, %rdx
+        mrmovq (%rdi),%r8
+        rmmovq %r8, (%rsi)
+        andq %r8, %r8
+        jle work2
+        iaddq $1, %rax
+    work2:
+        mrmovq 8(%rdi),%r8
+        rmmovq %r8, 8(%rsi)
+        andq %r8, %r8
+        jle work3
+        iaddq $1, %rax
+    work3:
+        mrmovq 16(%rdi),%r8
+        rmmovq %r8, 16(%rsi)
+        andq %r8, %r8
+        jle work4
+        iaddq $1, %rax
+    work4:
+        mrmovq 24(%rdi),%r8
+        rmmovq %r8, 24(%rsi)
+        andq %r8, %r8
+        jle modify
+        iaddq $1, %rax
+    modify:
+        iaddq $32,%rdi
+        iaddq $32,%rsi
+        iaddq $-4,%rdx
+        jge Loop
+    add:
+        iaddq $4, %rdx
+    remain:
+        je Done
+        mrmovq (%rdi), %r10
+        rmmovq %r10, (%rsi)
+        andq %r10, %r10
+        jle Npos
+        iaddq $1, %rax
+    Npos:	
+        iaddq $-1, %rdx
+        iaddq $8, %rdi
+        iaddq $8, %rsi
+        andq %rdx,%rdx
+        jg remain	
+    ```
 
-work1:	
-	mrmovq (%rdi),%r8
-	mrmovq 8(%rdi),%r9
-	rmmovq %r8, (%rsi)
-	andq %r8, %r8
-	jle work2
-	iaddq $1, %rax
-work2:
-	rmmovq %r9,8(%rsi)
-	mrmovq 16(%rdi),%r10
-	andq %r9, %r9
-	jle work3
-	iaddq $1, %rax
-work3:
-	rmmovq %r10,16(%rsi)
-	mrmovq 24(%rdi),%r11
-	andq %r10, %r10
-	jle work4
-	iaddq $1, %rax
-work4:
-	rmmovq %r11,24(%rsi)
-	andq %r11, %r11
-	jle modify
-	iaddq $1, %rax
-modify:
-	iaddq $32,%rdi
-	iaddq $32,%rsi
-	iaddq $-4,%rdx
-	jge work1
-res1:
-	iaddq $3, %rdx
-	jl Done
-	mrmovq (%rdi), %r8
-	mrmovq 8(%rdi), %r9
-	rmmovq %r8, (%rsi)
-	andq %r8, %r8
-	jle res2
-	iaddq $1, %rax
-res2:	
-	iaddq $-1, %rdx
-	jl Done
-	mrmovq 16(%rdi), %r10
-	rmmovq %r9, 8(%rsi)
-	andq %r9, %r9
-	jle res3
-	iaddq $1, %rax
-res3:	
-	iaddq $-1, %rdx
-	jl Done
-	rmmovq %r10, 16(%rsi)
-	andq %r10, %r10
-	jle Done
-	iaddq $1, %rax
-```
+3. Handle Data hazards
+
+    To reduce data hazards in the pipeline, we employ **6-way loop unrolling** with **early loading** of data values by using additional registers (`%r8`, `%r9`, `%r10`, `%r11`, $\cdots$) to pre‑fetch memory operands. The optimized implementation achieves an `average CPE of 7.96`.
+
+    ```assembly
+    ncopy:
+        iaddq $-6, %rdx
+        jl res1
+
+    work1:	
+        mrmovq (%rdi),%r8
+        mrmovq 8(%rdi),%r9
+        rmmovq %r8, (%rsi)
+        andq %r8, %r8
+        jle work2
+        iaddq $1, %rax
+    work2:
+        rmmovq %r9,8(%rsi)
+        mrmovq 16(%rdi),%r10
+        andq %r9, %r9
+        jle work3
+        iaddq $1, %rax
+    work3:
+        rmmovq %r10,16(%rsi)
+        mrmovq 24(%rdi),%r11
+        andq %r10, %r10
+        jle work4
+        iaddq $1, %rax
+    work4:
+        rmmovq %r11,24(%rsi)
+        mrmovq 32(%rdi),%r8
+        andq %r11, %r11
+        jle work5
+        iaddq $1, %rax
+    work5:
+        rmmovq %r8,32(%rsi)
+        mrmovq 40(%rdi),%r9
+        andq %r8, %r8
+        jle work6
+        iaddq $1, %rax
+    work6:
+        rmmovq %r9,40(%rsi)
+        andq %r9, %r9
+        jle modify
+        iaddq $1, %rax
+    modify:
+        iaddq $48,%rdi
+        iaddq $48,%rsi
+        iaddq $-6,%rdx
+        jge work1
+    res1:
+        iaddq $5, %rdx
+        jl Done
+        mrmovq (%rdi), %r8
+        mrmovq 8(%rdi), %r9
+        rmmovq %r8, (%rsi)
+        andq %r8, %r8
+        jle res2
+        iaddq $1, %rax
+    res2:	
+        iaddq $-1, %rdx
+        jl Done
+        mrmovq 16(%rdi), %r10
+        rmmovq %r9, 8(%rsi)
+        andq %r9, %r9
+        jle res3
+        iaddq $1, %rax
+    res3:	
+        iaddq $-1, %rdx
+        jl Done
+        mrmovq 24(%rdi), %r11
+        rmmovq %r10, 16(%rsi)
+        andq %r10, %r10
+        jle res4
+        iaddq $1, %rax
+    res4:	
+        iaddq $-1, %rdx
+        jl Done
+        mrmovq 32(%rdi), %r8
+        rmmovq %r11, 24(%rsi)
+        andq %r11, %r11
+        jle res5
+        iaddq $1, %rax
+    res5:	
+        iaddq $-1, %rdx
+        jl Done
+        rmmovq %r8, 32(%rsi)
+        andq %r8, %r8
+        jle Done
+        iaddq $1, %rax
+    ```
+
+4. Optimaze the Remaining Part
+
+    A **tree-like comparison structure** reduces branch instructions by hierarchically testing the remaining length, cutting down the average number of comparisons per iteration. Furthermore, by reordering certain comparison operations, the overall code size has been reduced, enabling higher execution efficiency within the strict byte constraint.
+
+    ```assembly
+    iaddq $-10, %rdx
+        jl f09
+    pre:
+        mrmovq (%rdi), %r8
+        mrmovq 8(%rdi), %r9
+        mrmovq 16(%rdi), %r10
+        mrmovq 24(%rdi), %r11
+        mrmovq 32(%rdi), %r12
+        mrmovq 40(%rdi), %r13
+        mrmovq 48(%rdi), %r14
+        mrmovq 56(%rdi), %rbx
+        mrmovq 64(%rdi), %rcx
+        mrmovq 72(%rdi), %rbp
+    work1:	
+        rmmovq %r8, (%rsi)
+        andq %r8, %r8
+        jle work2
+        iaddq $1, %rax
+    work2:
+        rmmovq %r9, 8(%rsi)
+        andq %r9, %r9
+        jle work3
+        iaddq $1, %rax
+    work3:
+        rmmovq %r10, 16(%rsi)
+        andq %r10, %r10
+        jle work4
+        iaddq $1, %rax
+    work4:
+        rmmovq %r11, 24(%rsi)
+        andq %r11, %r11
+        jle work5
+        iaddq $1, %rax
+    work5:
+        rmmovq %r12, 32(%rsi)
+        andq %r12, %r12
+        jle work6
+        iaddq $1, %rax
+    work6:
+        rmmovq %r13, 40(%rsi)
+        andq %r13, %r13
+        jle work7
+        iaddq $1, %rax
+    work7:
+        rmmovq %r14, 48(%rsi)
+        andq %r14, %r14
+        jle work8
+        iaddq $1, %rax
+    work8:
+        rmmovq %rbx, 56(%rsi)
+        andq %rbx, %rbx
+        jle work9
+        iaddq $1, %rax
+    work9:
+        rmmovq %rcx, 64(%rsi)
+        andq %rcx, %rcx
+        jle work10
+        iaddq $1, %rax
+    work10:
+        rmmovq %rbp, 72(%rsi)
+        andq %rbp, %rbp
+        jle modify
+        iaddq $1, %rax
+    modify:
+        iaddq $0x50,%rdi
+        iaddq $0x50,%rsi
+        iaddq $-10,%rdx
+        jge pre
+    f09:
+        iaddq $7, %rdx
+        jg f49
+        jl f02
+        je rem3
+    f02:
+        iaddq $2, %rdx
+        je rem1
+        jg rem2
+        jl Done
+    f46:
+        iaddq $2, %rdx
+        jl rem4
+        je rem5
+        jg rem6
+    f49:
+        iaddq $-4, %rdx
+        jl f46
+        je rem7
+    f89:
+        iaddq $-2, %rdx
+        jl rem8
+    rem9:
+        mrmovq 0x40(%rdi), %r8
+        rmmovq %r8, 0x40(%rsi)
+        andq %r8, %r8
+        jle rem8
+        iaddq $1, %rax
+    rem8:
+        mrmovq 0x38(%rdi), %r8
+        rmmovq %r8, 0x38(%rsi)
+        andq %r8, %r8
+        jle rem7
+        iaddq $1, %rax
+    rem7:
+        mrmovq 0x30(%rdi), %r8
+        rmmovq %r8, 0x30(%rsi)
+        andq %r8, %r8
+        jle rem6
+        iaddq $1, %rax
+    rem6:
+        mrmovq 0x28(%rdi), %r8
+        rmmovq %r8, 0x28(%rsi)
+        andq %r8, %r8
+        jle rem5
+        iaddq $1, %rax
+    rem5:
+        mrmovq 0x20(%rdi), %r8
+        rmmovq %r8, 0x20(%rsi)
+        andq %r8, %r8
+        jle rem4
+        iaddq $1, %rax
+    rem4:
+        mrmovq 0x18(%rdi), %r8
+        rmmovq %r8, 0x18(%rsi)
+        andq %r8, %r8
+        jle rem3
+        iaddq $1, %rax
+    rem3:
+        mrmovq 0x10(%rdi), %r8
+        rmmovq %r8, 0x10(%rsi)
+        andq %r8, %r8
+        jle rem2
+        iaddq $1, %rax
+    rem2:
+        mrmovq 0x8(%rdi), %r8
+        rmmovq %r8, 0x8(%rsi)
+        andq %r8, %r8
+        jle rem1
+        iaddq $1, %rax
+    rem1:
+        mrmovq (%rdi), %r8
+        rmmovq %r8, (%rsi)
+        andq %r8, %r8
+        jle Done
+        iaddq $1, %rax
+    ```
+
+    The average CPE has improved to `7.66`.
+
+   The remainder cases are handled using a carefully structured decision tree. Special attention must be paid to the interleaving of `mrmovq` and `andq` instructions, as they directly affect global condition codes. Specifically, the `jle` instruction condition `(SF ^ OF) | ZF = 1` requires precise control over flag states. This ensures that `jl` or `jg` branches correctly direct execution to the appropriate remainder-handling routines; otherwise, incorrect flag propagation could lead to erroneous counting.
+
+    ```hcl
+        iaddq $-10, %rdx
+        jl f09
+    pre:
+        mrmovq (%rdi), %r8
+        mrmovq 8(%rdi), %r9
+        mrmovq 16(%rdi), %r10
+        mrmovq 24(%rdi), %r11
+        mrmovq 32(%rdi), %r12
+        mrmovq 40(%rdi), %r13
+        mrmovq 48(%rdi), %r14
+        mrmovq 56(%rdi), %rbx
+        mrmovq 64(%rdi), %rcx
+        mrmovq 72(%rdi), %rbp
+    work1:	
+        rmmovq %r8, (%rsi)
+        andq %r8, %r8
+        jle work2
+        iaddq $1, %rax
+    work2:
+        rmmovq %r9, 8(%rsi)
+        andq %r9, %r9
+        jle work3
+        iaddq $1, %rax
+    work3:
+        rmmovq %r10, 16(%rsi)
+        andq %r10, %r10
+        jle work4
+        iaddq $1, %rax
+    work4:
+        rmmovq %r11, 24(%rsi)
+        andq %r11, %r11
+        jle work5
+        iaddq $1, %rax
+    work5:
+        rmmovq %r12, 32(%rsi)
+        andq %r12, %r12
+        jle work6
+        iaddq $1, %rax
+    work6:
+        rmmovq %r13, 40(%rsi)
+        andq %r13, %r13
+        jle work7
+        iaddq $1, %rax
+    work7:
+        rmmovq %r14, 48(%rsi)
+        andq %r14, %r14
+        jle work8
+        iaddq $1, %rax
+    work8:
+        rmmovq %rbx, 56(%rsi)
+        andq %rbx, %rbx
+        jle work9
+        iaddq $1, %rax
+    work9:
+        rmmovq %rcx, 64(%rsi)
+        andq %rcx, %rcx
+        jle work10
+        iaddq $1, %rax
+    work10:
+        rmmovq %rbp, 72(%rsi)
+        andq %rbp, %rbp
+        jle modify
+        iaddq $1, %rax
+    modify:
+        iaddq $0x50,%rdi
+        iaddq $0x50,%rsi
+        iaddq $-10,%rdx
+        jge pre
+    f09:
+        iaddq $7, %rdx
+        jg f49
+        jl f02
+        je rem3
+    f02:
+        iaddq $2, %rdx
+        je rem1
+        iaddq $-1, %rdx
+        je rem2
+        ret
+    f49:
+        iaddq $-3, %rdx
+        jg f79
+        je rem6
+        iaddq $1, %rdx
+        je rem5
+        jmp rem4
+    f79:
+        iaddq $-2, %rdx
+        jl rem7
+        je rem8
+    rem9:
+        mrmovq 64(%rdi), %r8
+        andq %r8, %r8
+        rmmovq %r8, 64(%rsi)
+    rem8:
+        mrmovq 56(%rdi), %r8
+        jle ex9
+        iaddq $1, %rax
+    ex9:
+        rmmovq %r8, 56(%rsi)
+        andq %r8, %r8
+    rem7:
+        mrmovq 48(%rdi), %r8
+        jle ex8
+        iaddq $1, %rax
+    ex8:
+        rmmovq %r8, 48(%rsi)
+        andq %r8, %r8
+    rem6:
+        mrmovq 40(%rdi), %r8
+        jle ex7
+        iaddq $1, %rax
+    ex7:
+        rmmovq %r8, 40(%rsi)
+        andq %r8, %r8
+    rem5:
+        mrmovq 32(%rdi), %r8
+        jle ex6
+        iaddq $1, %rax
+    ex6:
+        rmmovq %r8, 32(%rsi)
+        andq %r8, %r8
+    rem4:
+        mrmovq 24(%rdi), %r8
+        jle ex5
+        iaddq $1, %rax
+    ex5:
+        rmmovq %r8, 24(%rsi)
+        andq %r8, %r8
+    rem3:
+        mrmovq 16(%rdi), %r8
+        jle ex4
+        iaddq $1, %rax
+    ex4:
+        rmmovq %r8, 16(%rsi)
+        andq %r8, %r8
+    rem2:
+        mrmovq 8(%rdi), %r8
+        jle ex3
+        iaddq $1, %rax
+    ex3:
+        rmmovq %r8, 8(%rsi)
+        andq %r8, %r8
+    rem1:
+        mrmovq (%rdi), %r8
+        jle ex2
+        iaddq $1, %rax
+    ex2:
+        rmmovq %r8, (%rsi)
+        andq %r8, %r8
+        jle Done
+        iaddq $1, %rax
+    ```
+
+    After implementing comprehensive pipeline optimizations including register preloading and careful remainder handling, the implementation achieved:
+
+    ```
+    Average CPE     7.50
+    Score   60.0/60.0
+    ```
+
+5. Modify HCL (extra)
+
+    The expression `E_icode in { IMRMOVQ, IPOPQ } && E_dstM in { d_srcA, d_srcB }` identifies load/use hazards in the pipeline. 
+
+    |Instruction\Cycle|1|2|3|4|5|6|
+    |:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+    |`mrmov I1(%rax) %rbx`|F|D|E|**M**|W||
+    |`rmmov %rbx I2(%rax)`||F|D|E|M|**W**|
+
+    In the pipeline timeline, the first instruction reads data from memory during its Memory stage (cycle 4). The second instruction needs that same data during its own Memory stage (cycle 5). Because the data is available one cycle before it is needed, forwarding is possible: the value from `m_valM` can be routed directly to the `valA` field in the next instruction's pipeline register, bypassing the register file.
+
+    Load forwarding works when two conditions are met:  
+
+    1. The current instruction loads a value from memory into a register (e.g., `mrmovq` or `popq`) and uses that register as the source operand.  
+    2. The next instruction uses that same register as a source operand **not in its Execute stage**, but only later, during its Memory stage — typically in store-type instructions such as `rmmovq` or `pushq`.  
+
+    To support this, a forwarding path is added that connects the memory output signal `m_valM` to the `valA` input of the pipeline register M, allowing it to be passed directly to `e_valA` in the following instruction. Formally, the forwarding condition can be expressed as `E_icode in { IMRMOVQ, IPOPQ } && E_srcA == M_dstM`. Therefore, only the following control logic will trigger load/use hazard handling:
+
+    ```hcl
+    E_icode in { IMRMOVQ, IPOPQ } && (E_dstM == d_srcB || (E_dstM == d_srcA && !(D_icode in { IMRMOVQ, IPUSHQ })))
+    ```
+
+    The logic for `e_valA` in the Execute stage must be updated to select the forwarded value from memory when applicable:
+
+    ```hcl
+    word e_valA = [
+    E_icode in { IRMMOVQ, IPUSHQ } && E_srcA == M_dstM: m_valM;
+        1 : E_valA;  # Use valA from stage pipe register
+    ];
+    ```
+
+    The pipeline control logic must also be adjusted to handle load/use hazards appropriately:
+
+    ```hcl
+    bool F_bubble = 0;
+    bool F_stall =
+        # Conditions for a load/use hazard
+        (E_icode in { IMRMOVQ, IPOPQ } && (E_dstM == d_srcB || (E_dstM == d_srcA && !(D_icode in { IMRMOVQ, IPUSHQ })))) ||
+        # Stalling at fetch while ret passes through pipeline
+        IRET in { D_icode, E_icode, M_icode };
+
+    # Should I stall or inject a bubble into Pipeline Register D?
+    # At most one of these can be true.
+    bool D_stall = 
+        # Conditions for a load/use hazard
+        E_icode in { IMRMOVQ, IPOPQ } &&
+        (E_dstM == d_srcB || (E_dstM == d_srcA && !(D_icode in { IMRMOVQ, IPUSHQ })));
+
+    bool D_bubble =
+        # Mispredicted branch
+        (E_icode == IJXX && !e_Cnd) ||
+        # Stalling at fetch while ret passes through pipeline
+        # but not condition for a load/use hazard
+        !(E_icode in { IMRMOVQ, IPOPQ } && (E_dstM == d_srcB || (E_dstM == d_srcA && !(D_icode in { IMRMOVQ, IPUSHQ })))) &&
+        IRET in { D_icode, E_icode, M_icode };
+
+    # Should I stall or inject a bubble into Pipeline Register E?
+    # At most one of these can be true.
+    bool E_stall = 0;
+    bool E_bubble =
+        # Mispredicted branch
+        (E_icode == IJXX && !e_Cnd) ||
+        # Conditions for a load/use hazard
+        (E_icode in { IMRMOVQ, IPOPQ } && (E_dstM == d_srcB || (E_dstM == d_srcA && !(D_icode in { IMRMOVQ, IPUSHQ }))));
+    ```
