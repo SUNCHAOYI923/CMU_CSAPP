@@ -695,7 +695,7 @@ Loop unrolling was attempted to improve performance. After experimentation, $4 \
 
     The average CPE has improved to `7.66`.
 
-   The remainder cases are handled using a carefully structured decision tree. Special attention must be paid to the interleaving of `mrmovq` and `andq` instructions, as they directly affect global condition codes. Specifically, the `jle` instruction condition `(SF ^ OF) | ZF = 1` requires precise control over flag states. This ensures that `jl` or `jg` branches correctly direct execution to the appropriate remainder-handling routines; otherwise, incorrect flag propagation could lead to erroneous counting.
+   The remainder cases are handled using a carefully structured decision tree. Special attention must be paid to the interleaving of `mrmovq` and `andq` instructions, as they directly affect global condition codes. Specifically, the `jle` instruction condition `(SF ^ OF) | ZF = 1` requires precise control over flag states. This ensures that `jl` or `jg` branches correctly direct execution to the appropriate remainder-handling routines; otherwise, incorrect flag propagation could lead to erroneous counting. ([Reference Article](https://blog.csdn.net/Leafing_/article/details/130207471))
 
     ```hcl
         iaddq $-10, %rdx
