@@ -359,7 +359,7 @@ cd ../ptest; make SIM=../pipe/psim TFLAGS=-i
 ./benchmark.pl
 ```
 
-### Refference Solution
+### Reference Solution
 
 - Some suggestions in the pdf
 

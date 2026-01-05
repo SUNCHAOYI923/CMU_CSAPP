@@ -2,5 +2,5 @@
 - Website : http://csapp.cs.cmu.edu/
 - Lab : https://csapp.cs.cmu.edu/3e/labs.html
 - Chinese Version : https://www.bilibili.com/video/BV1cD4y1D7uR/
-- Related Refferences : 
+- Related Reference : 
     - https://dog-du.github.io/posts/27869.html
