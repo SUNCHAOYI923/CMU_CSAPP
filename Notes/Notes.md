@@ -657,3 +657,39 @@ When an instruction triggers an exception, all subsequent instructions must be p
 | Handling `ret`       | Stall   | Bubble  | Normal  | Normal  | Normal  |
 | Load/Use Hazard      | Stall   | Stall   | Bubble  | Normal  | Normal  |
 | Mispredicted Branch  | Normal  | Bubble  | Bubble  | Normal  | Normal  |
+
+# Chapter 5 Optimizing Program Performance
+
+## Capabilities and Limitations of Optimizing Compilers
+
+### Memory Aliasing
+
+The two pointers probably reference the same memory address.
+
+### Function Calls
+
+## Performance
+
+CPE: Cycles Per Element.
+
+## Understanding Modern Processors
+
+### Instruction Control Unit (ICU) & Execution Unit (EU)
+
+<img src="pic/11.png" width="70%" height="70%">
+
+The ICU reads instructions from the **instruction cache** and uses **branch prediction** to speculatively fetch and decode future instructions in advance. This **speculative execution** mechanism allows the processor to start executing operations along the predicted program path before the actual branch outcome is known. If the prediction is incorrect, all speculative results are discarded and execution restarts from the correct branch target.
+
+Decoded instructions are broken down into micro-operations, which are then sent to the EU for execution. The EU includes arithmetic units and dedicated **load/store units**, each with address calculation logic, to perform memory operations via the **data cache**.
+
+All along, the **retirement unit** tracks instruction progress to ensure sequential program semantics are preserved. Instructions remain in a queue until their results are ready and all relevant branch predictions are verified. Only then are results committed to the architectural registers. If a branch was mispredicted, the affected instructions are flushed and their results discarded, preventing any erroneous state change in the program.
+
+**Register renaming** allows out-of-order execution by assigning unique tags to instruction results. When a later instruction needs a register value, it uses the tag to get the result directly once ready, avoiding waits for register writes and enabling speculative execution.
+
+Each operation is characterized by the following metrics: 
+
+- **latency** It represents the total time required to complete the operation.
+    
+- **Issue time** It indicates the minimum number of clock cycles needed between two consecutive operations of the same type.
+
+- **Capacity** It refers to the number of functional units capable of executing that operation.

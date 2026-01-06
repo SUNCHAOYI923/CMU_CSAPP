@@ -4,3 +4,7 @@
 - Chinese Version : https://www.bilibili.com/video/BV1cD4y1D7uR/
 - Related Reference : 
     - https://dog-du.github.io/posts/27869.html
+
+    - https://hansimov.gitbook.io/csapp
+
+    - https://cloud.tencent.com/developer/article/1826669
