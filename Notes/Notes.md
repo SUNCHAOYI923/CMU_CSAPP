@@ -2,22 +2,29 @@
 
 ### Compilation System
     
-Take C language as an example `linux > gcc hello.c -o hello`
+Take C language as an example `linux > gcc hello.c -o hello`.
 
 - **Pre-processor** (cpp)   
-    $\texttt{.c} \to \texttt{.i}$ Removal of comments & Header file inclusion & Macro expansion
+
+    $\texttt{.c} \to \texttt{.i}$ Handles include/define, strips off comments and conditional compilation #ifdef
 
 - **Compiler** (cc1)   
-    $\texttt{.i} \to \texttt{.s}$ Translates into assembly language
+
+    $\texttt{.i} \to \texttt{.s}$ Scan/parse/semantic check/code gen/opt
 
 - **Assembler** (as)   
-    $\texttt{.s} \to \texttt{.o}$ Generate relocatable object file
 
-- **Linker** (ld) $\texttt{.o} \to \texttt{Executable}$ Combines codes with standard libraries
+    $\texttt{.s} \to \texttt{.o}$ From assembly to machine code
+
+- **Linker** (ld) $\texttt{.o} \to \texttt{Executable}$ 
+
+    Relocation, reference resolution
 
 ### Hardware Organization of a System
 
 <img src="pic/1.png" width="70%" height="70%">
+
+DMA (Direct Memory Access) is usually used for high-spped and bulk data transfers, controlled by system programmers.
 
 - **System Bus** 
 
@@ -27,14 +34,26 @@ Take C language as an example `linux > gcc hello.c -o hello`
 
 <img src="pic/2.png" width="70%" height="70%">
 
-### Abstractions in Computer Systems
+The localities of cache: **Temporal Locality** & **Spatial Locality**.
+
+### Abstractions in Computer Systems (Virtualization)
 
 <img src="pic/3.png" width="70%" height="70%">
 
-- **Process & Thread**   
-    Context switching with OS Kernel
-- **Virtual Memory**  
-    Program Code & Data, Shared Libraries, Heap, Stack, Kernel Virtual Memory from bottom to top
+Virtualization is often related to multiplicity, fake versions, and sharing.
+
+- **Process & Thread**
+
+    Multiple processes can run concurrently on the same system, and each process appears to have exclusive use of the hardware. 
+    
+    Context switching with OS Kernel.
+
+    A process can actually consist of multiple execution units, called threads. Threads shares the same code and global data.
+
+- **Virtual Memory**
+
+    Program Code & Data, Shared Libraries, Heap, Stack, Kernel Virtual Memory from bottom to top.
+
 - **File**
 
 ### Amdahl's Law (Quantifying the performance improvement ceiling)
