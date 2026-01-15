@@ -53,6 +53,14 @@ Virtualization is often related to multiplicity, fake versions, and sharing.
 - **Virtual Memory**
 
     Program Code & Data, Shared Libraries, Heap, Stack, Kernel Virtual Memory from bottom to top.
+    
+    - Virtual address space canve greater than the  physical memory.
+
+    - Memory serves as a cache for virtaul memory.
+
+    - Support multiprogramming.
+
+    - Allow multiple processes to share data.
 
 - **File**
 
@@ -71,6 +79,10 @@ $S = \frac{T_{old}}{T_{new}} = \frac{1}{1 - \alpha + \frac{\alpha}{k}}$
     $w$ word size $\Longleftrightarrow$ $[0,2^w)$ virtual address space
 
 - **Addressing and Byte Ordering** Big endian & Little endian
+
+- **ABI**  Application Binary Interface
+
+    It is based on three key components : the computer ISA, the OS, and the calling convention. ABI incompatibility will occur due to differences between operating systems.
 
 ## Integer Representaions
 
@@ -102,19 +114,23 @@ $$
 
 #### Small to Big
 
-    - Zero extension of unsigned numbers
-    
-    - Sign extension of two's complement numbers
+- Zero extension of unsigned numbers
 
-        $\operatorname{B2T_w}([x_{w - 1},x_{w - 2},\cdots,w_0]) = \operatorname{B2T_{w + k}}([x_{w - 1},x_{w - 1},\cdots,x_{w - 1},x_{w - 1},x_{w - 2},\cdots,x_0])$
+- Sign extension of two's complement numbers
 
-        Since $\operatorname{B2T_{w + 1}} -\operatorname{B2T_w} = (-x_{w - 1} \cdot 2^w + x_{w - 1} \cdot 2^{w - 1}) - x_{w - 1} \cdot 2^{w - 1} = 0$, by induction, we can proof it.
+    $\operatorname{B2T_w}([x_{w - 1},x_{w - 2},\cdots,w_0]) = \operatorname{B2T_{w + k}}([x_{w - 1},x_{w - 1},\cdots,x_{w - 1},x_{w - 1},x_{w - 2},\cdots,x_0])$
+
+    Since $\operatorname{B2T_{w + 1}} -\operatorname{B2T_w} = (-x_{w - 1} \cdot 2^w + x_{w - 1} \cdot 2^{w - 1}) - x_{w - 1} \cdot 2^{w - 1} = 0$, by induction, we can proof it.
+
+    >Inverse form (1's Complement): For a negative number, keep the signed the same and invert the rest.<br> two zero exits & end-round carry out issues (hte end carry-out bit needs to add back to the LSB)
+    <br>
+    2's Complement : For a negative number, keep the sign the same, invert the rest and add 1.
 
 #### Big to Small
 
-    - $\operatorname{B2U_{k}}(x) = \operatorname{B2U_{w}}(x) \bmod 2^k$
+- $\operatorname{B2U_{k}}(x) = \operatorname{B2U_{w}}(x) \bmod 2^k$
 
-    - $\operatorname{B2T_{k}}(x) = \operatorname{U2T_{w}}(\operatorname{B2U_{w}}(x) \bmod 2^k)$
+- $\operatorname{B2T_{k}}(x) = \operatorname{U2T_{w}}(\operatorname{B2U_{w}}(x) \bmod 2^k)$
 
 ## Integer Arithmetic
 
