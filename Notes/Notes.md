@@ -171,6 +171,27 @@ Tmin_w,\quad x = Tmin_w
 \end{cases}
 $$
 
+- For two numbers A, B, the overflow occurs when `(NOT (sign_A XOR sign_B)) AND (sign_A XOR new_sign) == 1`. (Two operands have the same sign but the result has a different sign.)
+
+- One Bit Full Adder 
+
+    $S_i = A_i + B_i + \text{carry\_in} \quad \text{carry\_out} = (A_i \& B_i) | (\text{carry\_in} \& (A_i \oplus B_i))$
+
+- Carry Lookahead Adder 
+    
+    $$
+    \begin{cases}
+    g_i = (A_i \cdot B_i) \\
+    p_i = (A_i \oplus B_i) \\
+    C_1 = g_0 + (p_0 \cdot C_0) \\
+    C_2 = g_1 + (p_1 \cdot g_0) + (p_1 \cdot p_0 \cdot C_0) \\
+    C_3 = g_2 + (p_2 \cdot g_1) + (p_2 \cdot p_1 \cdot g_0) + (p_2 \cdot p_1 \cdot p_0 \cdot C_0) \\
+    \vdots
+    \end{cases}
+    $$
+
+    <img src="pic/12.png" width="70%" height="70%">
+
 ### Multipilication
 
 $$
@@ -492,10 +513,10 @@ If a function has more than 6 integer parameters, the additional arguments must 
 
 | Expression   | Type  | Value                 | Assembly Code                  |
 |--------------|-------|------------------------|--------------------------------|
-| `E`          | `int*` | \( x_E \)             | `movq %rdx, %rax`              |
-| `E[i]`       | `int`  | \( M[x_E + 4i] \)     | `movl (%rdx, %rcx, 4), %eax`   |
-| `&E[i]`      | `int*` | \( x_E + 4i \)        | `leaq 8(%rdx, %rcx, 4), %rax`  |
-| `&E[i] - E`  | `long` | \( i \)               | `movq %rcx, %rax`              |
+| `E`          | `int*` | $ x_E $             | `movq %rdx, %rax`              |
+| `E[i]`       | `int`  | $ M[x_E + 4i] $     | `movl (%rdx, %rcx, 4), %eax`   |
+| `&E[i]`      | `int*` | $ x_E + 4i $        | `leaq 8(%rdx, %rcx, 4), %rax`  |
+| `&E[i] - E`  | `long` | $ i $               | `movq %rcx, %rax`              |
 
 **Notes**:
 
