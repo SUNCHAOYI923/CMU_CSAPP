@@ -223,38 +223,22 @@ E (exponent) : $2^E$ weight.
 
 <img src="pic/4.png" width="70%" height="70%">
 
-$\texttt{bias (float)} = 127 \quad \texttt{bias(double)} = 1023$ ($\texttt{bias} = 2^k - 1$)
+$\texttt{bias (float)} = 127 \quad \texttt{bias(double)} = 1023$ ($\texttt{bias} = 2^{k - 1} - 1$)
 
-#### Normalized 
-
-exp is neither all 0s nor all 1s, i.e. $e \in [1,255]$
-
-$E = e - \texttt{bias}$, 
-
-$M = 1 + f$
-
-#### Denormalized
-
-$s = 0, f = 0 \rightarrow V = +0.0 \quad s = 1, f = 0 \rightarrow V = -0.0$
-
-$E = 1 - \texttt{bias}$
-
-$M = f$
-
-#### Infinity
-
-$s = 0, f = 0 \rightarrow V = +\infin \quad s = 1, f = 0 \rightarrow V = -\infin$
-
-#### NaN (Not a Number)
-
-$f \neq 0$
+|Category|Exponent $e$|Fraction $f$|Value Formula|
+|:--:|:--:|:--:|:--:|
+|Normalized|$1 \le e \le 254$|any|$V = (-1)^s \times (f{\color{red} + 1}) \times 2^{\color{red}{e - 127}}$|
+|Denormalized|$e = 0$|$f \neq 0$|$V = (-1)^s \times f \times 2^{\color{red}{-126}}$|
+|Zero|$e = 0$|$f = 0$|$V = \pm 0.0$|
+|Infinity|$e = 255$|$f = 0$|$V = \pm \infty$|
+|NaN (Not a Number) |$e = 255$|$f \neq 0$|`NaN`|
 
 #### Comparison
 
 |Format|Minimum|Maximum|
 |:--:|:--:|:--:|
 |Single Precision Normalized <br> $V = (-1)^s \times \overline{1.f} \times 2^{e - 127}$|$e = \texttt{00000001}$ <br> $E_{\min} = -126$ <br> $f = 0$ <br> $V = 1.0 \times 2^{-126}$|$e = \texttt{11111110}$ <br> $E_{\max} = 127$ <br> $f = 0.\underbrace{11\ldots 1}_{23\ \text{ones}}$ <br> $M = 1 + f = 1 + (1 - 2^{-23})$ <br>$V = 1.0 \times 2^{127} \times (2 - 2^{-23}) \approx 3.4 \times 10^{38}$|
-|Double Precision Normalized <br> $V = (-1)^s \times \overline{0.f} \times 2^{-126}$|$e = \texttt{00000000}$ <br> $f = 2^{-23}$ <br> $V = 1.0 \times 2^{-149}$|$e = \texttt{00000000}$ <br> $f = 0.\underbrace{11\ldots 1}_{23\ \text{ones}}$ <br> $V = 1.0 \times 2^{-126} \times (1 - 2^{-23})$|
+|Single Precision Denormalized <br> $V = (-1)^s \times \overline{0.f} \times 2^{-126}$|$e = \texttt{00000000}$ <br> $f = 2^{-23}$ <br> $V = 1.0 \times 2^{-149}$|$e = \texttt{00000000}$ <br> $f = 0.\underbrace{11\ldots 1}_{23\ \text{ones}}$ <br> $V = 1.0 \times 2^{-126} \times (1 - 2^{-23})$|
 
 ### Rounding
 
@@ -276,7 +260,7 @@ e.g. $1.40 \to 1 \quad 1.6 \to 2 \quad 1.5 \to 2 \quad 2.5 \to 2$
 
 - **Non-midpoint** round to the nearest representable value
 
-- **Midpoint** choose the even one
+- **Midpoint** choose the $\textbf{even}$ one
 
 ### Floating Point Operations
 
