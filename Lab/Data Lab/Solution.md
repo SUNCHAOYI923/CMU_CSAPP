@@ -73,7 +73,6 @@ This report documents the solutions to the CS:APP Data Lab problems. The goal of
     int isTmax (int x) {return !((~(x + 1)) ^ x) & !!(x + 1);}
     ```
     
-
 4. **allOddBits** 
 
     **Description:** Return 1 if all odd-numbered bits in word set to 1.
@@ -316,7 +315,7 @@ This report documents the solutions to the CS:APP Data Lab problems. The goal of
     \begin{cases}
     0 & \text{if } |f| < 1 \\
     \text{trunc}\left(1.f \times 2^{e-127}\right) & \text{if } 1 \leq |f| < 2^{31} \\
-    \text{INT\_MIN} & \text{otherwise (overflow)}
+    \text{INT{\_}MIN} & \text{otherwise (overflow)}
     \end{cases}
     $$
 

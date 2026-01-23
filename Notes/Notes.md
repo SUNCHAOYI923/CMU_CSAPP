@@ -18,7 +18,7 @@ Take C language as an example `linux > gcc hello.c -o hello`.
 
 - **Linker** (ld) $\texttt{.o} \to \texttt{Executable}$ 
 
-    Relocation, reference resolution
+    Relocation & reference resolution [重定位 & 引用解析]
 
 ### Hardware Organization of a System
 
@@ -64,11 +64,25 @@ Virtualization is often related to multiplicity, fake versions, and sharing.
 
 - **File**
 
-### Amdahl's Law (Quantifying the performance improvement ceiling)
+### Import Themes
+
+#### Amdahl's Law (Quantifying the performance improvement ceiling)
 
 $T_{new} = (1 - \alpha) T_{old} + \frac{\alpha T_{old}}{k} = T_{old} (1 - \alpha + \frac{\alpha}{k})$
 
 $S = \frac{T_{old}}{T_{new}} = \frac{1}{1 - \alpha + \frac{\alpha}{k}}$
+
+#### Concurrency and Parallelism
+
+- **Concurrency** It refers to the general concept of a system having multiple, simultaneous activities, which do not necessarily execute at the same time, but may interleave in time to create the logical impression of simultaneity.
+
+- **Parallelism** It refers to the use of concureency to make a system run faster.
+
+#### ILP and DLP
+
+- **Instruction-Level** e.g. Parallelism pipelining, superscalar, out-of-order execution.
+
+- **Data-Level Parallelism** e.g. Single Insruction Multiple Data (SIMD), Vector instructions.
 
 # Chapter 2 Representing and Manipulating Information
 
@@ -86,11 +100,29 @@ $S = \frac{T_{old}}{T_{new}} = \frac{1}{1 - \alpha + \frac{\alpha}{k}}$
 
 ## Integer Representaions
 
+### Sizes of Data Type in C/C++
+
+|Signed|Unsigned|32-bit (Bytes)|64-bit (Bytes)|
+|:--:|:--:|:--:|:--:|
+|$\texttt{[signed] char}$|$\texttt{unsigned char}$|1|1|
+|$\texttt{short}$|$\texttt{unsigned short}$|2|2|
+|$\texttt{int}$|$\texttt{unsigned}$|4|4|
+|$\texttt{long}$|$\texttt{unsigned long}$|$\color{red}\textbf{4}$|$\color{red}\textbf{8}$|
+|$\texttt{int32{\_}t}$|$\texttt{uint32{\_}t}$|4|4|
+|$\texttt{int64{\_}t}$|$\texttt{uint64{\_}t}$|8|8|
+|$\texttt{char *}$|—|$\color{red}\textbf{4}$|$\color{red}\textbf{8}$|
+|$\texttt{float}$|—|4|4|
+|$\texttt{double}$|—|8|8|
+
 ### Unsigned Encodings
 
 Suppose a vector $\mathrm{x} = [x_{w - 1},x_{w - 2},\cdots,x_0]$, then $\operatorname{B2U_w}(x) = \sum \limits_{i = 0}^{w - 1}x_i \cdot 2^i$
 
 ### Two's Complement Encodings
+
+><strong>Inverse form (1's Complement)</strong> For a negative number, keep the signed the same and invert the rest.<br> two zero exits & end-round carry out issues (hte end carry-out bit needs to add back to the LSB)
+<br><br>
+<strong>2's Complement</strong> For a negative number, keep the sign the same, invert the rest and add 1.
 
 Suppose a vector $\mathrm{x} = [x_{w - 1},x_{w - 2},\cdots,x_0]$, then $\operatorname{B2T_w}(x) = -x_{w - 1} \cdot 2^{w - 1} + \sum \limits_{i = 0}^{w - 2}x_i \cdot 2^i$
 
@@ -110,6 +142,11 @@ u - w^w,\quad x > Tmax_w
 \end{cases}
 $$
 
+For a $n$-bit 2's complemetn signed binary numeral system:
+
+- Minimum $-2^{n - 1}$, corresponding to binary $\texttt{100} \cdots \texttt{0}$ (A special case that does not satisfy the **invert bits and add 1** rule used for other negative numbers).
+- Maximum $2^{n - 1} - 1$, corresponding to binary $\texttt{011} \cdots \texttt{1}$.
+
 ### Sign Extension
 
 #### Small to Big
@@ -121,10 +158,6 @@ $$
     $\operatorname{B2T_w}([x_{w - 1},x_{w - 2},\cdots,w_0]) = \operatorname{B2T_{w + k}}([x_{w - 1},x_{w - 1},\cdots,x_{w - 1},x_{w - 1},x_{w - 2},\cdots,x_0])$
 
     Since $\operatorname{B2T_{w + 1}} -\operatorname{B2T_w} = (-x_{w - 1} \cdot 2^w + x_{w - 1} \cdot 2^{w - 1}) - x_{w - 1} \cdot 2^{w - 1} = 0$, by induction, we can proof it.
-
-    >Inverse form (1's Complement): For a negative number, keep the signed the same and invert the rest.<br> two zero exits & end-round carry out issues (hte end carry-out bit needs to add back to the LSB)
-    <br>
-    2's Complement : For a negative number, keep the sign the same, invert the rest and add 1.
 
 #### Big to Small
 
