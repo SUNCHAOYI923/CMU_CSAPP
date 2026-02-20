@@ -254,8 +254,6 @@ M (fraction) : A binary fraction.
 
 E (exponent) : $2^E$ weight.
 
-<img src="pic/4.png" width="70%" height="70%">
-
 $\texttt{bias (float)} = 127 \quad \texttt{bias(double)} = 1023$ ($\texttt{bias} = 2^{k - 1} - 1$)
 
 |Category|Exponent $e$|Fraction $f$|Value Formula|
@@ -266,44 +264,112 @@ $\texttt{bias (float)} = 127 \quad \texttt{bias(double)} = 1023$ ($\texttt{bias}
 |Infinity|$e = 255$|$f = 0$|$V = \pm \infty$|
 |NaN (Not a Number) |$e = 255$|$f \neq 0$|`NaN`|
 
-#### Comparison
+#### Comparison (postive number)
 
 |Format|Minimum|Maximum|
 |:--:|:--:|:--:|
-|Single Precision Normalized <br> $V = (-1)^s \times \overline{1.f} \times 2^{e - 127}$|$e = \texttt{00000001}$ <br> $E_{\min} = -126$ <br> $f = 0$ <br> $V = 1.0 \times 2^{-126}$|$e = \texttt{11111110}$ <br> $E_{\max} = 127$ <br> $f = 0.\underbrace{11\ldots 1}_{23\ \text{ones}}$ <br> $M = 1 + f = 1 + (1 - 2^{-23})$ <br>$V = 1.0 \times 2^{127} \times (2 - 2^{-23}) \approx 3.4 \times 10^{38}$|
-|Single Precision Denormalized <br> $V = (-1)^s \times \overline{0.f} \times 2^{-126}$|$e = \texttt{00000000}$ <br> $f = 2^{-23}$ <br> $V = 1.0 \times 2^{-149}$|$e = \texttt{00000000}$ <br> $f = 0.\underbrace{11\ldots 1}_{23\ \text{ones}}$ <br> $V = 1.0 \times 2^{-126} \times (1 - 2^{-23})$|
+|Single Precision Normalized <br> $V = (-1)^s \times \overline{1.f} \times 2^{e - 127}$|$e = \texttt{00000001}$ <br> $E_{\min} = -126$ <br> $f = 0$ <br> $V = 1.0 \times 2^{-126}$|$e = \texttt{11111110}$ <br> $E_{\max} = 127$ <br> $f = 0.\underbrace{11\ldots 1}_{23\ \text{ones}}$ <br> $M = 1 + f = 1 + (1 - 2^{-23})$ <br>$V = 1.0 \times 2^{127} \times (2 - 2^{-23}) \approx 3.4 \times 10^{38}(\texttt{0x7F7FFFFF})$|
+|Single Precision Denormalized <br> $V = (-1)^s \times \overline{0.f} \times 2^{-126}$|$e = \texttt{00000000}$ <br> $f = 2^{-23}$ <br> $V = 1.0 \times 2^{-149}(\texttt{0x00800000})$|$e = \texttt{00000000}$ <br> $f = 0.\underbrace{11\ldots 1}_{23\ \text{ones}}$ <br> $V = 1.0 \times 2^{-126} \times (1 - 2^{-23})$|
 
-### Rounding
+#### Rounding
 
-#### Round-down 
+|Round-down|Round-up|Round-toward-zero|Round-to-even|
+|:--:|:--:|:--:|:--:|
+|$1.40 \to 1$<br>$-1.5 \to -2$|$1.40 \to 2$<br>$-1.5 \to -1$|$1.40 \to 1$<br>$-1.5 \to -1$|$1.40 \to 1$<br>$1.6 \to 2$<br>$1.5 \to 2$<br>$2.5 \to 2$<br>**Non-midpoint** round to the nearest representable value<br>**Midpoint** choose the $\color{red}\textbf{even}$ one|
 
-e.g. $1.40 \to 1 \quad -1.5 \to -2$
-
-#### Round-up
-
-e.g. $1.40 \to 2 \quad -1.5 \to -1$
-
-#### Round-toward-zero
-
-e.g. $1.40 \to 1 \quad -1.5 \to -1$
-
-#### Round-to-even
-
-e.g. $1.40 \to 1 \quad 1.6 \to 2 \quad 1.5 \to 2 \quad 2.5 \to 2$
-
-- **Non-midpoint** round to the nearest representable value
-
-- **Midpoint** choose the $\textbf{even}$ one
-
-### Floating Point Operations
+#### Floating Point Operations
 
 Lack of Associativity & Lack of Distributivity
+
+Let $x,f,d$ are of type `int`, `float`, `double` (Their values are arbitrary, except that neither $f$ nor $d$ equals $+\infty$, $-\infty$, or $\texttt{NaN}$.). Then:
+
+- `x == (int)(double) x` True
+- `x == (int)(float) x` False $2^{24} - 1 \to (1 + 0.\underbrace{11\ldots 1}_{23\ \text{ones}}) \times 2^{23}$ (e.g. $16777217$)
+- `d == (double)(float) d` False (e.g. $1.234$)
+- `f == (float)(double) f` True
+- `d*d >= 0.0` True
+
+
+#### FMA/FMAC
+
+Fused Multiply and Add (FMA) or Fused Multiply and Accumulate (FMAC) combines multiply and add in one instruction ($A \times B + C$).
+
+1. Partial Product Generation
+2. Partial Product Reduction
+3. Final add together with the last step of reduction
+4. Normalization & Rounding
+
+Use `-mfma -ffp-contract=fast` to enable FMA.
 
 # Chapter 3 Machine-Level Representation of Programs
 
 ## Machine-Level Representation of Programs
 
-### Size of Data Type in IA32
+### RISC
+
+#### Principles
+
+1. Simplicity favors regularity
+2. Smaller is faster
+3. Make common cases fast
+4. Good design demands good compromises
+
+[RSA should be scalable, flexible, and extensible.]
+
+#### Instruction Types in RV32I
+
+<img src="pic/13.png" width="50%" height="60%"><img src="pic/14.png" width="50%" height="50%">
+
+|Types|Instructions|
+|:--:|:--:|
+|ALU|`add`, `sub`, `and`, `or`, `xor`, `slt`, `sltu`, `sll`, `srl`, `sra`, and all with immediate (No `subi` in RV32I)|
+|Control Instructions|`beq`, `bne`, `blt`, `bge`, `bltu`, `bgeu`, `jal`, `jalr`|
+|Memory Instructions|`lw` (No `lwu` in RV32I), `lh`, `lb`, `sw`, `sh`, `sb`, `lbu`, `lhu`|
+|Privileged Instructions|Interrupt, Memory Management, System Calls, Control and Status Registers (CSR), Mode Change|
+
+- Three operand instruction format. 
+- X0 is always zero.
+- 32 means Address cability/Integer register length.
+- Immediate
+
+    - **$\texttt{R}$ type** No immediate.
+    - **$\texttt{B,I}$ type** 12 bits immediate. Shift instructions are I-type but repurpose the immediate field as a 5-bit shift amount for RV32I (6-bit for RV64I). `inst[30]` distinguishes arithmetic from logical right shift, while `inst[31:26]` are fixed to zero except `inst[30]`.
+    - **$\texttt{S}$ type** The 12‑bit immediate is split into high 7 bits (immediate) and low 5 bits (immed). (maintain regularity)
+    - **$\texttt{J}$ type** 20 bits immediate.
+- LUI loads a 20‑bit immediate into the upper bits of a register; AUIPC adds a 20‑bit immediate to the current PC for position‑independent addressing. (When the lower 12 bits of a 32‑bit constant are $\ge \texttt{0x800}$, `addi` sign‑extends them, causing an incorrect result. The assembler automatically adjusts the upper 20 bits when using the `li` pseudo‑instruction.)
+
+#### Data Alignment
+
+- No cache line crossing
+- No double TLB (Translation Lookaside Buffer) misses
+- No double page faults come from a single memory instruction execution
+- Better cache line utilization
+
+#### Stack / Frame Alignments
+
+- Defined by ABI (e.g., RISC‑V psABI: 16‑byte)
+- CRT aligns `sp` before `main ()`
+
+#### Compiler Reordering
+
+- Independent Variables (Rearrangement Allowed)
+
+- Struct Fields (Rearrangement Forbidden)
+    - Binary compatibility
+    - Pointer arithmetic
+    - Interoperability
+
+#### PC-relative Addressing
+
+Branch instructions use PC‑relative addressing with a 12‑bit signed offset (in 2‑byte units). Since branch targets are always multiples of 2, encoding in 2‑byte units doubles the reachable range without losing information.
+
+$$
+\text{Target Address} = \text{PC} + \text{sign\_extend}(12\text{-bit immediate}) \times 2
+$$
+
+### CISC
+
+#### Size of Data Type in IA32
 
 |C declaration|Intel data type|Assembly-code suffix|Size (bytes)|
 |:--:|:--:|:--:|:--:|
@@ -315,11 +381,9 @@ Lack of Associativity & Lack of Distributivity
 |$\texttt{float}$|Single precision|$\texttt{s}$|$4$|
 |$\texttt{double}$|Double precision|$\texttt{l}$|$8$|
 
-### Register
+#### Register
 
 <img src="pic/5.png" width="50%" height="60%"><img src="pic/6.png" width="40%" height="50%">
-
-### Information Access
 
 #### Operands
 
@@ -371,19 +435,17 @@ Lack of Associativity & Lack of Distributivity
 
     - $\texttt{pushq} \quad S$ 
 
-        ```assemblely
+        ```assembly
         subq $8 %rsp
         movq %rbq,(%rsp)
         ```
     
     - $\texttt{popq} \quad S$ 
 
-        ```assemblely
+        ```assembly
         movq (%rsq),%rax
         addq $8, %rsp
         ```
-
-### Arithmetic and Logical Operations
 
 #### Load Effective Address
 
@@ -421,8 +483,6 @@ Computes effective address and stores it in destination register
 |`shr D`|$D \gets D >>_L k$ Logical Right Shift|
 
 Shift instructions can shift by an immediate value, or by a value placed in the single-byte register `%cl`.
-
-### Control
 
 #### Condition Code
 
@@ -509,8 +569,6 @@ Shift instructions can shift by an immediate value, or by a value placed in the 
 
 `switch` is compiled into a jump table. The execution time of the switch statement is irrelevant to the number of cases.
 
-### Procedures
-
 #### Transfer Control
 |Instruction|Description|
 |:--:|:--:|
@@ -524,16 +582,14 @@ The registers' names depend on the size of the data type being passed.
 
 If a function has more than 6 integer parameters, the additional arguments must be passed on the **stack**. Note that the argument 7 is located at the top of the stack. All stack-passed arguments are aligned to multiples of 8 bytes.
 
-### Array Allocation and Access
-
 #### Pointer
 
 | Expression   | Type  | Value                 | Assembly Code                  |
 |--------------|-------|------------------------|--------------------------------|
-| `E`          | `int*` | $ x_E $             | `movq %rdx, %rax`              |
-| `E[i]`       | `int`  | $ M[x_E + 4i] $     | `movl (%rdx, %rcx, 4), %eax`   |
-| `&E[i]`      | `int*` | $ x_E + 4i $        | `leaq 8(%rdx, %rcx, 4), %rax`  |
-| `&E[i] - E`  | `long` | $ i $               | `movq %rcx, %rax`              |
+| `E`          | `int*` | $x_E$             | `movq %rdx, %rax`              |
+| `E[i]`       | `int`  | $M[x_E + 4i]$     | `movl (%rdx, %rcx, 4), %eax`   |
+| `&E[i]`      | `int*` | $x_E + 4i$        | `leaq 8(%rdx, %rcx, 4), %rax`  |
+| `&E[i] - E`  | `long` | $i$               | `movq %rcx, %rax`              |
 
 **Notes**:
 
@@ -544,7 +600,6 @@ If a function has more than 6 integer parameters, the additional arguments must 
 #### Nested Arrays
 
 `T D[R][C]` $\&D[R][C] = x_D + L(C \cdot i + j)$, $L$ is the size of data type `T` in bytes.
-
 
 ### Struture & Union
 
