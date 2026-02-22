@@ -333,10 +333,20 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 - Immediate
 
     - **$\texttt{R}$ type** No immediate.
-    - **$\texttt{B,I}$ type** 12 bits immediate. Shift instructions are I-type but repurpose the immediate field as a 5-bit shift amount for RV32I (6-bit for RV64I). `inst[30]` distinguishes arithmetic from logical right shift, while `inst[31:26]` are fixed to zero except `inst[30]`.
+    - **$\texttt{B,I}$ type** 12 bits immediate. Shift instructions are I-type but repurpose the immediate field as a 5-bit shift amount for RV32I (6-bit for RV64I). `inst[30]` distinguishes arithmetic from logical right shift, while `inst[31:26]` are fixed to zero except `inst[30]` (Range: $\pm 4\text{KB}$).
     - **$\texttt{S}$ type** The 12‑bit immediate is split into high 7 bits (immediate) and low 5 bits (immed). (maintain regularity)
     - **$\texttt{J}$ type** 20 bits immediate.
-- LUI loads a 20‑bit immediate into the upper bits of a register; AUIPC adds a 20‑bit immediate to the current PC for position‑independent addressing. (When the lower 12 bits of a 32‑bit constant are $\ge \texttt{0x800}$, `addi` sign‑extends them, causing an incorrect result. The assembler automatically adjusts the upper 20 bits when using the `li` pseudo‑instruction.)
+- LUI loads a 20‑bit immediate into the upper bits of a register; AUIPC adds a 20‑bit immediate to the current PC for position‑independent addressing. (When the lower 12 bits of a 32‑bit constant are $\ge \texttt{0x800}$, `addi` sign‑extends them, causing an incorrect result. The assembler automatically adjusts the upper 20 bits when using the `li` pseudo‑instruction.) (Range: $4\text{GB}$)
+
+- Jump
+    - `jal`
+
+        - $rd \leftarrow PC + 4$, $PC \leftarrow PC + \text{sign-extend}(\{\text{inst}[31], \text{inst}[19:12], \text{inst}[20], \text{inst}[30:21]\})\times 2$ (Jumps are 2-byte aligned, so last bit is implicit zero).
+        - Range: $\pm 1\text{MB}$.
+        - Beyond 1MB: Use **AUIPC + JALR**.
+    - `jalr`
+
+        - $rd \leftarrow PC + 4$, $PC \leftarrow (rs1 + \text{sign-extend}(\text{inst}[31:20])) \ \&\ \sim 1$ ($\sim 1$ clears LSB to ensure 2‑byte alignment). 
 
 #### Data Alignment
 
@@ -367,6 +377,25 @@ $$
 \text{Target Address} = \text{PC} + \text{sign\_extend}(12\text{-bit immediate}) \times 2
 $$
 
+
+#### Calling Convention
+
+| RV Registers | ABI Name | Preserved across calls? | Purpose |
+|---|---|---|---|
+| x0 | `zero` | — | Always zero |
+| x1 | `ra` | Caller | Return address |
+| x2 | `sp` | Callee | Stack pointer |
+| x3 | `gp` | — | Global pointer (not used in typical code) |
+| x4 | `tp` | — | Thread pointer (TLS) |
+| x5–x7 | `t0`–`t2` | Caller | Temporary registers |
+| x8 | `s0` / `fp` | Callee | Saved register / Frame pointer |
+| x9 | `s1` | Callee | Saved register |
+| x10–x11 | `a0`–`a1` | Caller | Arguments / Return values |
+| x12–x17 | `a2`–`a7` | Caller | Arguments |
+| x18–x27 | `s2`–`s11` | Callee | Saved registers |
+| x28–x31 | `t3`–`t6` | Caller | Temporary registers |
+
+Leaf routines use args & caller‑saved only (no save/restore).   
 ### CISC
 
 #### Size of Data Type in IA32
