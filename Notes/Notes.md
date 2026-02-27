@@ -281,6 +281,8 @@ $\texttt{bias (float)} = 127 \quad \texttt{bias(double)} = 1023$ ($\texttt{bias}
 
 Lack of Associativity & Lack of Distributivity
 
+<details><summary>Example Questions</summary>
+
 Let $x,f,d$ are of type `int`, `float`, `double` (Their values are arbitrary, except that neither $f$ nor $d$ equals $+\infty$, $-\infty$, or $\texttt{NaN}$.). Then:
 
 - `x == (int)(double) x` True
@@ -289,6 +291,23 @@ Let $x,f,d$ are of type `int`, `float`, `double` (Their values are arbitrary, ex
 - `f == (float)(double) f` True
 - `d*d >= 0.0` True
 
+</details>
+
+#### Precision (IEEE 754-2008 Standard Formats)
+
+| Format | Sign Bits | Exponent Bits | Mantissa Bits |
+|--------|-----------|---------------|---------------|
+| Quad precision | 1 | 15 | 112 |
+| Double precision | 1 | 11 | 52 |
+| Single precision (FP32) | 1 | 8 | 23 |
+| Half precision (FP16) | 1 | 5 | 10 |
+
+<details><summary>bfloat16</summary>
+
+- Format: 1 sign, 8 exponent, 7 mantissa bits
+- Same exponent range as FP32 (faster computation, lower power, reduces memory footprint, enables larger models)
+- Reduced precision acceptable for AI (AI/LLM is based on predictions – approximation does not require high precision)
+</details>
 
 #### FMA/FMAC
 
@@ -327,6 +346,17 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 |Memory Instructions|`lw` (No `lwu` in RV32I), `lh`, `lb`, `sw`, `sh`, `sb`, `lbu`, `lhu`|
 |Privileged Instructions|Interrupt, Memory Management, System Calls, Control and Status Registers (CSR), Mode Change|
 
+| Format | Name | Instructions |
+|--------|------|--------------|
+| **R-type** | Register | `add`, `sub`, `sll`, `srl`, `sra`, `xor`, `or`, `and` |
+| **I-type** | Immediate | `addi`, `slli`, `srli`, `srai`, `xori`, `ori`, `andi` |
+| **I-type** | Load | `lb`, `lh`, `lw`, `lbu`, `lhu` |
+| **I-type** | Jump and Link Register | `jalr` |
+| **S-type** | Store | `sb`, `sh`, `sw` |
+| **B-type** | Branch | `beq`, `bne`, `blt`, `bge`, `bltu`, `bgeu` |
+| **U-type** | Upper Immediate | `lui`, `auipc` |
+| **UJ-type** | Unconditional Jump | `jal` |
+
 - Three operand instruction format. 
 - X0 is always zero.
 - 32 means Address cability/Integer register length.
@@ -347,6 +377,14 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
     - `jalr`
 
         - $rd \leftarrow PC + 4$, $PC \leftarrow (rs1 + \text{sign-extend}(\text{inst}[31:20])) \ \&\ \sim 1$ ($\sim 1$ clears LSB to ensure 2‑byte alignment). 
+
+<details><summary>Why do RISC-V loads/stores use <code>base+immediate</code> instead of <code>base+index</code>?</summary>
+
+- **Simpler hardware** Only one address adder needed, reducing complexity.
+- **Faster address generation** Immediate available at decode, no wait for index register.
+- **Fewer pipeline stalls** Early hazard detection reduces bubbles.
+
+</details>
 
 #### Data Alignment
 
@@ -377,10 +415,9 @@ $$
 \text{Target Address} = \text{PC} + \text{sign\_extend}(12\text{-bit immediate}) \times 2
 $$
 
-
 #### Calling Convention
 
-| RV Registers | ABI Name | Preserved across calls? | Purpose |
+| RV Registers | ABI Name | Caller/Callee | Purpose |
 |---|---|---|---|
 | x0 | `zero` | — | Always zero |
 | x1 | `ra` | Caller | Return address |
@@ -395,7 +432,8 @@ $$
 | x18–x27 | `s2`–`s11` | Callee | Saved registers |
 | x28–x31 | `t3`–`t6` | Caller | Temporary registers |
 
-Leaf routines use args & caller‑saved only (no save/restore).   
+Leaf routines use args & caller‑saved only (no save/restore).  
+
 ### CISC
 
 #### Size of Data Type in IA32
