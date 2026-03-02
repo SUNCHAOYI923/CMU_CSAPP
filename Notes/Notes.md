@@ -302,7 +302,7 @@ Let $x,f,d$ are of type `int`, `float`, `double` (Their values are arbitrary, ex
 | Single precision (FP32) | 1 | 8 | 23 |
 | Half precision (FP16) | 1 | 5 | 10 |
 
-<details><summary>bfloat16</summary>
+<details><summary><strong>bfloat16</strong></summary>
 
 - Format: 1 sign, 8 exponent, 7 mantissa bits
 - Same exponent range as FP32 (faster computation, lower power, reduces memory footprint, enables larger models)
@@ -324,7 +324,7 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 
 ## Machine-Level Representation of Programs
 
-### RISC
+### RISC [optimized for processor speed]
 
 #### Principles
 
@@ -337,7 +337,7 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 
 #### Instruction Types in RV32I
 
-<img src="pic/13.png" width="50%" height="60%"><img src="pic/14.png" width="50%" height="50%">
+<img src="pic/14.png" width="50%" height="50%">
 
 |Types|Instructions|
 |:--:|:--:|
@@ -345,6 +345,8 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 |Control Instructions|`beq`, `bne`, `blt`, `bge`, `bltu`, `bgeu`, `jal`, `jalr`|
 |Memory Instructions|`lw` (No `lwu` in RV32I), `lh`, `lb`, `sw`, `sh`, `sb`, `lbu`, `lhu`|
 |Privileged Instructions|Interrupt, Memory Management, System Calls, Control and Status Registers (CSR), Mode Change|
+
+<img src="pic/13.png" width="50%" height="60%">
 
 | Format | Name | Instructions |
 |--------|------|--------------|
@@ -356,6 +358,24 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 | **B-type** | Branch | `beq`, `bne`, `blt`, `bge`, `bltu`, `bgeu` |
 | **U-type** | Upper Immediate | `lui`, `auipc` |
 | **UJ-type** | Unconditional Jump | `jal` |
+
+<details> <summary><strong>Instruction Encoding List</strong></summary>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+  <div style="align-self: stretch;">
+    <img src="pic/15.png" style="width: 100%; height: 100%; object-fit: contain;">
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <div style="flex: 1; display: flex; align-items: flex-start;">
+      <img src="pic/16.png" style="width: 100%; max-height: 100%; object-fit: contain;">
+    </div>
+    <div style="flex: 1; display: flex; align-items: flex-end;">
+      <img src="pic/17.png" style="width: 100%; max-height: 100%; object-fit: contain;">
+    </div>
+  </div>
+</div>
+
+</details>
 
 - Three operand instruction format. 
 - X0 is always zero.
@@ -378,6 +398,38 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 
         - $rd \leftarrow PC + 4$, $PC \leftarrow (rs1 + \text{sign-extend}(\text{inst}[31:20])) \ \&\ \sim 1$ ($\sim 1$ clears LSB to ensure 2‑byte alignment). 
 
+<details><summary><strong>Pseudo Instrcution</strong></summary>
+
+| Pseudoinstruction | Actual Instruction Sequence | Operation |
+|-------------------|----------------------------|-----------|
+| `nop` | `addi x0, x0, 0` | No operation |
+| `li rd, imm` | `lui rd, imm[31:12] + imm[11]`<br>`addi rd, rd, imm[11:0]` | Load 32-bit immediate |
+| `mv rd, rs` | `addi rd, rs, 0` | Copy register |
+| `not rd, rs` | `xori rd, rs, -1` | Bitwise NOT |
+| `neg rd, rs` | `sub rd, x0, rs` | Two's complement negation |
+| `seqz rd, rs` | `sltiu rd, rs, 1` | Set if $= 0$ |
+| `snez rd, rs` | `sltu rd, x0, rs` | Set if $\neq 0$ |
+| `sltz rd, rs` | `slt rd, rs, x0` | Set if $< 0$ |
+| `sgtz rd, rs` | `slt rd, x0, rs` | Set if $> 0$ |
+| `beqz rs, offset` | `beq rs, x0, offset` | Branch if $= 0$ |
+| `bnez rs, offset` | `bne rs, x0, offset` | Branch if $\neq 0$ |
+| `blez rs, offset` | `bge x0, rs, offset` | Branch if $\le 0$ |
+| `bgez rs, offset` | `bge rs, x0, offset` | Branch if $\ge 0$ |
+| `bltz rs, offset` | `blt rs, x0, offset` | Branch if $< 0$ |
+| `bgtz rs, offset` | `blt x0, rs, offset` | Branch if $> 0$ |
+| `bgt rs, rt, offset` | `blt rt, rs, offset` | Branch if $rs > rt$ |
+| `ble rs, rt, offset` | `bge rt, rs, offset` | Branch if $rs \le rt$ |
+| `bgtu rs, rt, offset` | `bltu rt, rs, offset` | Branch if unsigned $rs > rt$ |
+| `bleu rs, rt, offset` | `bgeu rt, rs, offset` | Branch if unsigned $rs \le rt$ |
+| `j offset` | `jal x0, offset` | Unconditional jump |
+| `jal offset` | `jal x1, offset` | Jump and link (return address in `x1`) |
+| `jr rs` | `jalr x0, 0(rs)` | Jump to address in `rs` |
+| `jalr rs` | `jalr x1, 0(rs)` | Jump and link to address in `rs` |
+| `ret` | `jalr x0, 0(x1)` | Return from subroutine |
+| `call offset` | `auipc x1, offset[31:12] + offset[11]`<br>`jalr x1, offset[11:0](x1)` | Far call to subroutine |
+
+</details>
+
 <details><summary>Why do RISC-V loads/stores use <code>base+immediate</code> instead of <code>base+index</code>?</summary>
 
 - **Simpler hardware** Only one address adder needed, reducing complexity.
@@ -386,12 +438,46 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 
 </details>
 
+<details><summary>Why do RISC-V instructions place immediate bits in seemingly "random" positions (e.g., B-Type and J-Type)?</summary>
+
+- Fixed sign bit at position 31 across all formats.
+- Decoder reuse (B-Type reuses S-Type logic, J-Type reuses U-Type logic).
+- Fixed register fields (`rs1`, `rs2`, `rd`) across formats.
+</details>
+
 #### Data Alignment
 
 - No cache line crossing
 - No double TLB (Translation Lookaside Buffer) misses
 - No double page faults come from a single memory instruction execution
 - Better cache line utilization
+
+<details><summary>Exercise</summary>
+
+```c
+struct S1 {
+    int white;
+    long long count;
+    char c;
+    int red;
+    int blue;
+} A[];
+```
+Suppose $A$ is an array of structure $S1$, and the starting address of $A$ is stored in register $X1$. what instruction should be used to access `A[100].red`?
+
+| Member | Size | Start | Padding | End | Reason |
+|--------|------|-------|---------|-----|--------|
+| `white` | $4$ | $0$ | $0$ | $3$ | `int` aligns at $4$ |
+| `count` | $8$ | $8$ | $+4$ | $15$ | needs 8-byte align, $4$ pad $4$ to $8$ |
+| `c` | $1$ | $16$ | $0$ | $16$ | `char` aligns at $1$ |
+| `red` | $4$ | $20$ | $+3$ | $23$ | needs 4-byte align, $17$ pad $3$ to $20$ |
+| `blue` | $4$ | $24$ | $0$ | $27$ | `int` aligns at $4$ |
+
+Current size is $28$. Largest alignment in struct is $8$, $28$ is not a multiple of $8$, so pad $4$ bytes at the end. Total struct size is $32$ bytes.
+
+`A[100].red` : $X1 + 100 \times 32 + 20 = X1 + 3220$, so the answer is `LW X2, 3220(X1)`.
+
+</details>
 
 #### Stack / Frame Alignments
 
@@ -415,6 +501,24 @@ $$
 \text{Target Address} = \text{PC} + \text{sign\_extend}(12\text{-bit immediate}) \times 2
 $$
 
+#### CSR
+
+| Name | Abbreviation | Description |
+|------|--------------|-------------|
+| Machine Trap-Vector Base-Address Register | `mtvec` | Exception handler entry address |
+| Machine Status Register | `mstatus` | Global interrupt enable (MIE) and status |
+| Machine Cause Register | `mcause` | Reason of last exception/interrupt |
+| Machine Exception Program Counter | `mepc` | Saves PC when exception occurs |
+| Machine Interrupt Enable Register | `mie` | Enables specific interrupt sources |
+| Machine Interrupt Pending Register | `mip` | Shows pending interrupts |
+
+#### Exception Handling
+
+1. **Save context** Save current PC value to `mepc` register
+2. **Update status** Update `mstatus`, disable further interrupts (clear MIE bit) to prevent nesting
+3. **Set cause** Write exception/interrupt reason to `mcause`
+4. **Jump to handler** Jump to exception handler entry point based on `mtvec` configuration
+
 #### Calling Convention
 
 | RV Registers | ABI Name | Caller/Callee | Purpose |
@@ -434,7 +538,7 @@ $$
 
 Leaf routines use args & caller‑saved only (no save/restore).  
 
-### CISC
+### CISC [optimized for compact code size]
 
 #### Size of Data Type in IA32
 
