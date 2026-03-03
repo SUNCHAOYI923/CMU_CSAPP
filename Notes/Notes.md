@@ -94,10 +94,6 @@ $S = \frac{T_{old}}{T_{new}} = \frac{1}{1 - \alpha + \frac{\alpha}{k}}$
 
 - **Addressing and Byte Ordering** Big endian & Little endian
 
-- **ABI**  Application Binary Interface
-
-    It is based on three key components : the computer ISA, the OS, and the calling convention. ABI incompatibility will occur due to differences between operating systems.
-
 ## Integer Representaions
 
 ### Sizes of Data Type in C/C++
@@ -432,7 +428,7 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 
 <details><summary>Why do RISC-V loads/stores use <code>base+immediate</code> instead of <code>base+index</code>?</summary>
 
-- **Simpler hardware** Only one address adder needed, reducing complexity.
+- **Simpler hardware** Only one address needed, reducing complexity.
 - **Faster address generation** Immediate available at decode, no wait for index register.
 - **Fewer pipeline stalls** Early hazard detection reduces bubbles.
 
@@ -444,6 +440,10 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 - Decoder reuse (B-Type reuses S-Type logic, J-Type reuses U-Type logic).
 - Fixed register fields (`rs1`, `rs2`, `rd`) across formats.
 </details>
+
+#### Application Binary Interface (ABI)
+
+It is based on three key components : **the computer ISA, the OS, and the calling convention**. ABI incompatibility will occur due to differences between operating systems.
 
 #### Data Alignment
 
@@ -526,8 +526,8 @@ $$
 | x0 | `zero` | — | Always zero |
 | x1 | `ra` | Caller | Return address |
 | x2 | `sp` | Callee | Stack pointer |
-| x3 | `gp` | — | Global pointer (not used in typical code) |
-| x4 | `tp` | — | Thread pointer (TLS) |
+| x3 | `gp` | — | Global pointer |
+| x4 | `tp` | — | Thread pointer |
 | x5–x7 | `t0`–`t2` | Caller | Temporary registers |
 | x8 | `s0` / `fp` | Callee | Saved register / Frame pointer |
 | x9 | `s1` | Callee | Saved register |
@@ -536,7 +536,19 @@ $$
 | x18–x27 | `s2`–`s11` | Callee | Saved registers |
 | x28–x31 | `t3`–`t6` | Caller | Temporary registers |
 
-Leaf routines use args & caller‑saved only (no save/restore).  
+Leaf routines use args & caller‑saved only (no save/restore any registers).  
+
+<details> <summary>Why <strong>caller</strong> registers are allocated to temporaries?</summary>
+Temporaries are short-lived and do not need to survive across function calls.  Placing them in caller‑save registers avoids unnecessary save/restore code.
+</details>
+
+<details> <summary>Why <strong>callee</strong> registers are allocated to local variables?</summary>
+Local variables live across function calls. Using callee registers ensures they are preserved automatically by the callee, avoiding repeated saves at each call site.
+</details>
+
+<details> <summary>Why <strong>callee</strong> registers are allocated to CSEs (Common Sub-Expressions)?</summary>
+Local variables and CSEs are tend to live longer (may be as long as the procedure invocation).
+</details>
 
 ### CISC [optimized for compact code size]
 
