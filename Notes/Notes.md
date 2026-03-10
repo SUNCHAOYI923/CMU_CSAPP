@@ -308,19 +308,17 @@ Let $x,f,d$ are of type `int`, `float`, `double` (Their values are arbitrary, ex
 
 <details><summary><strong>bfloat16</strong></summary>
 
-- Format: 1 sign, 8 exponent, 7 mantissa bits
-- Same exponent range as FP32 (faster computation, lower power, reduces memory footprint, enables larger models)
-- Reduced precision acceptable for AI (AI/LLM is based on predictions – approximation does not require high precision)
+- The format is 1 sign, 8 exponent, 7 mantissa bits, Same exponent range as FP32.
+- AI/LLM is based on predictions, approximation does not require high precision.Therefore reduced precision is acceptable for AI.  
+- Lower precision format enables higher memory bandwidth and computational. bandwidth.
 </details>
 
 #### FMA/FMAC
 
 Fused Multiply and Add (FMA) or Fused Multiply and Accumulate (FMAC) combines multiply and add in one instruction ($A \times B + C$).
 
-1. Partial Product Generation
-2. Partial Product Reduction
-3. Final add together with the last step of reduction
-4. Normalization & Rounding
+- Multiplication and addition are parallel.
+- Normalization and rounding are combined at the end.
 
 Use `-mfma -ffp-contract=fast` to enable FMA.
 
@@ -387,10 +385,16 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 - Immediate
 
     - **$\texttt{R}$ type** No immediate.
-    - **$\texttt{B,I}$ type** 12 bits immediate. Shift instructions are I-type but repurpose the immediate field as a 5-bit shift amount for RV32I (6-bit for RV64I). `inst[30]` distinguishes arithmetic from logical right shift, while `inst[31:26]` are fixed to zero except `inst[30]` (Range: $\pm 4\text{KB}$).
-    - **$\texttt{S}$ type** The 12‑bit immediate is split into high 7 bits (immediate) and low 5 bits (immed). (maintain regularity)
+    - **$\texttt{B,I}$ type** 12 bits immediate. Shift instructions are I-type but repurpose the immediate field as a 5-bit shift amount for RV32I (6-bit for RV64I). `inst[30]` distinguishes arithmetic from logical right shift, while `inst[31:26]` are fixed to zero except `inst[30]` (Range: $\pm 4\text{KB}$). The immediate in the **branch** instruction is an offset relative to PC.
+    - **$\texttt{S}$ type** The 12‑bit immediate is split into high 7 bits (immediate) and low 5 bits (immed) (maintain regularity). The immediate in the **store** instruction is an offset relative to `rs1`.
     - **$\texttt{J}$ type** 20 bits immediate.
-- LUI loads a 20‑bit immediate into the upper bits of a register; AUIPC adds a 20‑bit immediate to the current PC for position‑independent addressing. (When the lower 12 bits of a 32‑bit constant are $\ge \texttt{0x800}$, `addi` sign‑extends them, causing an incorrect result. The assembler automatically adjusts the upper 20 bits when using the `li` pseudo‑instruction.) (Range: $4\text{GB}$)
+- LUI loads a 20‑bit immediate into the upper bits of a register; AUIPC adds a 20‑bit immediate to the current PC for position‑independent addressing. 
+  <details> <summary>How to load a 32b const into a register?</summary>
+  
+    1. Use a LW instruction (cost more)
+    2. `lui` and `addi` (When the lower 12 bits of a 32‑bit constant are $\ge \texttt{0x800}$, `addi` sign‑extends them, causing an incorrect result. The assembler automatically adjusts the upper 20 bits when using the `li` pseudo‑instruction.) (Range: $4\text{GB}$)
+
+    </details>
 
 - Jump
     - `jal`
@@ -401,6 +405,17 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
     - `jalr`
 
         - $rd \leftarrow PC + 4$, $PC \leftarrow (rs1 + \text{sign-extend}(\text{inst}[31:20])) \ \&\ \sim 1$ ($\sim 1$ clears LSB to ensure 2‑byte alignment). 
+
+- Regularity
+  
+| Field | Bit Position | Note |
+| :---: | :---: | :---: |
+| **Opcode** | $[0,6]$ | Always opcode |
+| **rd** | $[7,11]$ | Destination reg |
+| **rs1** | $[15,19]$ | Source reg 1 |
+| **rs2** | $[20,24]$ | Source reg 2 |
+| **Length** | - | Fixed 16/32 bit |
+| **Immediate** | High bits | Uses rd field for branch/store |
 
 <details><summary><strong>Pseudo Instrcution</strong></summary>
 
@@ -436,9 +451,9 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 
 <details><summary>Why do RISC-V loads/stores use <code>base+immediate</code> instead of <code>base+index</code>?</summary>
 
-- **Simpler hardware** Only one address needed, reducing complexity.
-- **Faster address generation** Immediate available at decode, no wait for index register.
-- **Fewer pipeline stalls** Early hazard detection reduces bubbles.
+- **Simpler hardware** Adding scaling to load instructions requires a shifter and complicates the address calculation datapath, increasing cost and cycle time.
+- **ISA regularity violation** Three operands `(rs1, rs2, rd)` would force an R‑type format, but R‑type is reserved for ALU operations only. Mixing in memory access would break the clean encoding scheme.
+- **Compiler can optimize it away** In loops, the compiler just increments the base register by the element size each iteration, making scaled indexing unnecessary.
 
 </details>
 
@@ -613,16 +628,65 @@ $$
 - **CISC machines** Lower instruction count, higher CPI, longer cycle time
 - **RISC machines** Higher instruction count, lower CPI, shorter cycle time
 
+### Processor Designs
+
+1. Analyze the requirements
+2. Data Path Requirements selections
+   
+   - **Combinational Components** Adder & MUX & ALU (An adder only does addition (e.g., PC+4). An ALU includes an adder but also performs many other arithmetic/logic operations.) 
+
+   - **Sequential Components** 
+       
+        Register $N$-bit storage with Write Enable control. Updates only at clock tick if $\text{Write} = 1$. 
+        
+        Register File consists of 32 registers with two read ports (rs1/rs2) and one write port (rd).
+
+        Memory. Read ($\text{WE}=0$): Address → Data Out. Write ($\text{WE}=1$): Next clock tick, Data In → Address.
+
+    - **Assemble**
+
+        - **Instruction Fetch Unit** Fetch the instruction and Update the program counter.
+
+        - **Branch Operations** Using ALU subtraction for branches risks overflow corrupting the sign, so RISC-V processors internally use flags or dedicated comparators for correct branch decisions without hardware traps.
+        
+        - **Add and Subtract**
+        
+        - **Load/Store Operations** A single ALU and register file need two multiplexers: one for ALU's second input, another for register file's write data source.
+
+    - **Control Points and Signals**
+        
 ## Logic Designs
 
 ### Major components
 
 - Combinational element
-- State (sequntial elements)
+- State (sequntial elements) $\text{Write} = 0$, cannot write to register (B-type and S-type).
 - Clock signals
 
 <details> <summary>What is the difference between combinational logic and sequential logic?</summary>
 
 The former one is stateless, output purely depends on the inputs (e.g. ALU). The latter one has states, output depends on the inputs and the states (e.g. register).
+
+</details>
+
+### Abstract View of RV32I Subset
+
+<img src="pic/18.png" width="80%" height="80%">
+
+<details><summary> How to select between <code>PC+4</code> and <code>PC+immediate</code>?</summary>
+
+If a branch is taken or a jal instruction, select `pc+immed`. Otherwise select `PC+4`.
+
+</details>
+
+<details><summary> How to select data from the memory or the ALU?</summary>
+
+If load select `Mem`. If R-type select `ALU`.
+
+</details>
+
+<details><summary> How to select data from Immediate or <code>reg[rs2]</code>?</summary>
+
+If R-type select `rs2`. If I-type select `immed`.
 
 </details>
