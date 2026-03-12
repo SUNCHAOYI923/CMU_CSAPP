@@ -690,3 +690,38 @@ If load select `Mem`. If R-type select `ALU`.
 If R-type select `rs2`. If I-type select `immed`.
 
 </details>
+
+<img src="pic/19.png" width="90%" height="80%">
+
+<details> <summary> Why does RV32I still need a dedicated Branch Comparator despite having an ALU? </summary>
+
+- Use Branch Comparision to avoid substruction overflow.
+- RV32I lacks architectural flags, it requires a dedicated comparator to enable single-cycle compare-and-branch operations by combining comparison and jump logic.   
+
+</details>
+
+## Pipelining
+
+### Five Stages
+
+1. $\text{IF}$ Instrcution fetch from (instruction) memory
+2. $\text{ID}$ Instrcution decode & register read
+3. $\text{EX}$ Execute operation or calculate address
+4. $\text{MEM}$ Access (data) memory operand
+5. $\text{WB}$ Write the result back to **register**
+
+| Instructions | Detailed Stages |
+| :--: | :--: |
+| **R-Type** (e.g., `add`, `sub`) | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, no $\text{MEM}$) |
+| **I-Type** (e.g., `addi`, `slli`) | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, no $\text{MEM}$) |
+| **Load** (e.g., `lb`, `lw`) | $\text{IF} \to \text{ID} \to \text{EX} \to \text{MEM} \to \text{WB}$ ($5$ stages) |
+| **Store** (e.g., `sb`, `sw`) | $\text{IF} \to \text{ID} \to \text{EX} \to \text{MEM}$ ($4$ stages, no $\text{WB}$) |
+| **Branch** (e.g., `beq`, `blt`) | $\text{IF} \to \text{ID} \to \text{EX}$ ($3$ stages, no $\text{MEM}$, no $\text{WB}$) |
+| `jal` | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, writes $\text{PC}+4$ to $\text{rd}$, no $\text{MEM}$) |
+| `jalr` | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, similar to `jal`) |
+| `lui` | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, immediate to $\text{rd}$, no $\text{MEM}$) |
+| `auipc` | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, $\text{PC} + \text{immediate}$ to $\text{rd}$, no $\text{MEM}$) |
+
+- Throughput increases as more instructions complete per unit time, but single instruction latency does not decrease and may even increase ($\text{IF} \to \text{WB}$). 
+
+- Pipeline rate is limited by the slowest stage.
