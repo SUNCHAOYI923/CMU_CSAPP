@@ -584,17 +584,35 @@ Local variables and CSEs are tend to live longer (may be as long as the procedur
 
 # Chapter 4 Processor Architecture & Logic Design
 
+## Logic Designs
+
+### Major components
+
+- Combinational element
+- State (Sequential) elements $\text{Write} = 0$, cannot write to register (**B-type and S-type**).
+- Clock signals
+
+<details> <summary>What is the difference between combinational logic and sequential logic?</summary>
+
+The former one is stateless, output purely depends on the inputs (e.g. ALU). The latter one has states, output depends on the inputs and the states (e.g. register).
+
+</details>
+
+The propagation delay of a combinational circuit is determined by the delay of the critical path, which is the longest path of logic gates from any input to any output.
+
 ## Processor
 
-### Data Path (Data Flow)
+### Core
+
+#### Data Path (Data Flow) 
 
 e.g. ALU, Register, Memory interface, Buses.
 
-### Control (Instruction Flow)
+#### Control (Instruction Flow) 
 
 e.g. PC, Instruction fetch, and Control signal generation.
 
-### Core
+#### RV32I Data Path and Control
 
 - **Memory reference instrutions** `lw`, `sw`
 - **Arithmetic/logical instrutions** `add`, `sub`, `and`, `or`
@@ -604,19 +622,22 @@ e.g. PC, Instruction fetch, and Control signal generation.
 
 #### Cycle
 
-- **Fetch** Use the PC to supply the instruction address and fetch the instruction from memory.
-- **Decode** Decode the instruction (and read registers).
-- **Execute** 
-    - Use ALU to calculate (Arithmetic result & Memory address for load/store & branch target address)
-    - Access data memory for load/store
-    - Update PC (target address or PC + 4 (next word) or PC + 2 (if using compressed instructions RV32IC))
-  
+- **Three Stages**
+    - **Fetch** Use the PC to supply the instruction address and fetch the instruction from memory.
+    - **Decode** Decode the instruction (and read registers).
+    - **Execute** 
+        - Use ALU to calculate (Arithmetic result & Memory address for load/store & branch target address)
+        - Access data memory for load/store
+        - Update PC (target address or PC + 4 (next word) or PC + 2 (if using compressed instructions RV32IC))
+
+- **Multi-cycle** Instructions are broken down into multiple steps, each taking **one** clock cycle. 
+
 #### Time
 
 CPU time is determined by the following:
 
 $$
-\text{CPU Time} = \text{Instructions count} \times \text{Cycles per instruction} \times \text{Clock cycle time}
+\text{CPU Time} = \text{Instructions count} \times \text{Cycles per instruction (CPI)} \times \text{Clock cycle time}
 $$
 
 Program execution time is determined by the following:
@@ -627,47 +648,6 @@ $$
 
 - **CISC machines** Lower instruction count, higher CPI, longer cycle time
 - **RISC machines** Higher instruction count, lower CPI, shorter cycle time
-
-### Processor Designs
-
-1. Analyze the requirements
-2. Data Path Requirements selections
-   
-   - **Combinational Components** Adder & MUX & ALU (An adder only does addition (e.g., PC+4). An ALU includes an adder but also performs many other arithmetic/logic operations.) 
-
-   - **Sequential Components** 
-       
-        Register $N$-bit storage with Write Enable control. Updates only at clock tick if $\text{Write} = 1$. 
-        
-        Register File consists of 32 registers with two read ports (rs1/rs2) and one write port (rd).
-
-        Memory. Read ($\text{WE}=0$): Address → Data Out. Write ($\text{WE}=1$): Next clock tick, Data In → Address.
-
-    - **Assemble**
-
-        - **Instruction Fetch Unit** Fetch the instruction and Update the program counter.
-
-        - **Branch Operations** Using ALU subtraction for branches risks overflow corrupting the sign, so RISC-V processors internally use flags or dedicated comparators for correct branch decisions without hardware traps.
-        
-        - **Add and Subtract**
-        
-        - **Load/Store Operations** A single ALU and register file need two multiplexers: one for ALU's second input, another for register file's write data source.
-
-    - **Control Points and Signals**
-        
-## Logic Designs
-
-### Major components
-
-- Combinational element
-- State (sequntial elements) $\text{Write} = 0$, cannot write to register (B-type and S-type).
-- Clock signals
-
-<details> <summary>What is the difference between combinational logic and sequential logic?</summary>
-
-The former one is stateless, output purely depends on the inputs (e.g. ALU). The latter one has states, output depends on the inputs and the states (e.g. register).
-
-</details>
 
 ### Abstract View of RV32I Subset
 
@@ -691,7 +671,51 @@ If R-type select `rs2`. If I-type select `immed`.
 
 </details>
 
+### Processor Designs
+
+1. Analyze the requirements
+2. Data Path Requirements selections
+   
+   - **Combinational Components** Adder & MUX & ALU (An adder only does addition (e.g., PC+4). An ALU includes an adder but also performs many other arithmetic/logic operations.) 
+
+   - **Sequential Components** 
+       
+        Register $N$-bit storage with Write Enable control. Updates only at clock tick if $\text{Write} = 1$. 
+        
+        Register File consists of 32 registers with two read ports (rs1/rs2) and one write port (rd).
+
+        Memory. Read ($\text{WE}=0$): Address → Data Out. Write ($\text{WE}=1$): Next clock tick, Data In → Address.
+
+    - **Assemble**
+
+        - **Instruction Fetch Unit** Fetch the instruction and Update the program counter.
+
+        - **Branch Operations** Using ALU subtraction for branches risks overflow corrupting the sign, so RISC-V processors internally use flags (overflow and carry) or dedicated comparators for correct branch decisions without hardware traps.
+        
+        - **Add and Subtract** `R[rd] <- R[rs1] op R[rs2]`
+        
+        - **Load/Store Operations** A single ALU and register file need two multiplexers: one for ALU's second input (e.g. `add rd, rs1, rs2` and `addi rd, rs1, imm`), another for register file's write data source (e.g. `add x3, x1, x2` from ALU and `lw x3, 8(x1)` from memory).
+
+    - **Control Points and Signals** 
+
+        |Control Signal|Description|Expression|
+        |:--:|:--:|:--:|
+        |`PCsrc`|Select the next PC value <br>PC + 4 [$0$] <br>Branch / jump target address [$1$]|`(Branch or jal/jalr) ? 1 : 0`|
+        |`RegWr`|Write enable for register file|`(Branch or Store) ? 0 : 1`|
+        |`MemRd`|Enable signal for reading data memory|`Load ? 1 : 0`|
+        |`MemWr`|Enable signal for writing data memory|`Store ? 1 : 0`|
+        |`ALUsrc`|Select the second ALU input <br> register [$0$] <br> immediate value [$1$]|`R-type ? 0 : 1`|
+        |`ALUctr`|Determines the ALU operation|/|
+        |`WBsel`|Selects the data written to the register file <br> memory data [$0$] <br> ALU result [$1$] <br> PC + 4 [$2$]|`Load: 0; R-type : 1; jal/jalr : 2`|
+
+On each clock cycle, the single‑cycle processor executes one instruction. State elements update at the rising edge using combinational logic outputs computed during the cycle.
+
+### Control
+
 <img src="pic/19.png" width="90%" height="80%">
+
+- `Asel` `rs1` or `pc` (When use `jal`, the target is `PC + offset`.)
+- `Bsel` `rs2` or `immed`.
 
 <details> <summary> Why does RV32I still need a dedicated Branch Comparator despite having an ALU? </summary>
 
@@ -710,18 +734,82 @@ If R-type select `rs2`. If I-type select `immed`.
 4. $\text{MEM}$ Access (data) memory operand
 5. $\text{WB}$ Write the result back to **register**
 
-| Instructions | Detailed Stages |
-| :--: | :--: |
-| **R-Type** (e.g., `add`, `sub`) | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, no $\text{MEM}$) |
-| **I-Type** (e.g., `addi`, `slli`) | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, no $\text{MEM}$) |
-| **Load** (e.g., `lb`, `lw`) | $\text{IF} \to \text{ID} \to \text{EX} \to \text{MEM} \to \text{WB}$ ($5$ stages) |
-| **Store** (e.g., `sb`, `sw`) | $\text{IF} \to \text{ID} \to \text{EX} \to \text{MEM}$ ($4$ stages, no $\text{WB}$) |
-| **Branch** (e.g., `beq`, `blt`) | $\text{IF} \to \text{ID} \to \text{EX}$ ($3$ stages, no $\text{MEM}$, no $\text{WB}$) |
-| `jal` | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, writes $\text{PC}+4$ to $\text{rd}$, no $\text{MEM}$) |
-| `jalr` | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, similar to `jal`) |
-| `lui` | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, immediate to $\text{rd}$, no $\text{MEM}$) |
-| `auipc` | $\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ ($4$ stages, $\text{PC} + \text{immediate}$ to $\text{rd}$, no $\text{MEM}$) |
+|Instructions|Detailed Stages|
+|:--:|:--:|
+|R-Type, I-Type, `jal`, `jarl`, `lui`, `auipc`|$\text{IF} \to \text{ID} \to \text{EX} \to \text{WB}$ (no $\text{MEM}$)|
+|Store, Branch| $\text{IF} \to \text{ID} \to \text{EX} \to \text{MEM}$ (no $\text{WB}$)|
+|Load|$\text{IF} \to \text{ID} \to \text{EX} \to \text{MEM} \to \text{WB}$|
 
-- Throughput increases as more instructions complete per unit time, but single instruction latency does not decrease and may even increase ($\text{IF} \to \text{WB}$). 
-
+- Throughput increases as more instructions complete per unit time, but single instruction latency (The time it takes for each instruction to be executed.) does not decrease and may even increase. 
 - Pipeline rate is limited by the slowest stage.
+- Potential/ideal speedup = Number of pipeline stages (number of pipeline steps).
+
+### Pipeline-oriented ISA Design
+
+- All instructions are fixed length.
+- Few and regular instruction formats.
+- Only load/store instructions accessing memory.
+- Instructions are simple.
+
+### Single Cycle & Multi Cycle & Pipeline
+
+<img src="pic/20.png" width="60%" height="60%">
+
+|Implementation|Clock Cycle Time|Instruction Latency|
+|:--:|:--:|:--:|
+|Single-Cycle|Sum of all stage latencies| 1 $\times$ Clock Cycle Time|
+|Multi-Cycle|Longest stage latency|CPI $\times$ Clock Cycle Time|
+|Pipelined|Longest stage latency|Number of Stages $\times$ Clock Cycle Time|
+
+### Latency
+
+- Stall
+- Long latency pipline (Subsequent instructions can continue to proceed)
+  
+No arithmetic exceptions allow **out‑of‑order retirement**, avoiding stalls for long‑latency instructions.
+
+### Pipline Registers
+
+Without pipeline registers, stages would overwrite each other’s data, causing instruction mix‑ups and loss of control information.
+
+|Pipeline Register|Stored Information|
+|:--:|:--:|
+|IF/ID|`PC_ID`, `inst_ID` (instrcution code like opcode) |
+|ID/EX|`PC_EX`, `inst_EX`, `imm_EX`, `rs1_EX`, `rs2_EX`|
+|EX/MEM|`PC_MEM`, `inst_MEM`, `rs2_MEM`, `alu_MEM`|
+|MEM/WB|`PC+4_WB` (`rd = PC + 4`), `inst_WB`, `alu_WB`, `mem_WB`|
+
+- Control signals are derived from instruction bits, that is, after the ID stage.
+- Control information for later stages are also stored in the pipeline registers.
+
+- **Architecture States** (visible to the programmer and compiler)
+
+    - Registers (**general purpose**, fp, vector, flags)
+    - PC
+    - Memory
+    
+    It was saved during a context switch:
+    
+    - **user-level switch** (e.g. procedure call) saved on the runtime program stack (caller and callee convention).
+    - **system-level switch** (e.g. process switch) saved on the Process Control Block (PCB) or the kernel stack.
+
+- **Micro-architecture states**
+    - $\red{\text{Piplined registers}}$ Pipelined registers hold transient data between stages for a few cycles.
+    - Branch predictors
+    - Caches
+    - Buffers and Quenes
+    - Counters
+
+
+## Hazards
+
+### Structure Hazards
+
+A conflict arising due to hardware resourece limitations within the pipeline.
+
+- Pipeline stalls
+- Multiple resources
+- Instruction Reordering
+- ISA design
+
+### Data Hazards
