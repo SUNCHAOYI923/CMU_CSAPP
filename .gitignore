@@ -1,2 +1,8 @@
 /Quiz/
 /Project/Project3/
+*.out
+*.fdb_latexmk
+*.fls
+*.log
+*.synctex.gz
+*.aux

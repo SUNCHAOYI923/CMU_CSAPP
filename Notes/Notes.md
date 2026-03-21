@@ -361,6 +361,37 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 | **U-type** | Upper Immediate | `lui`, `auipc` |
 | **UJ-type** | Unconditional Jump | `jal` |
 
+- Three operand instruction format. 
+- X0 is always zero.
+- 32 means Address cability/Integer register length.
+- Immediate
+
+    - **$\texttt{R}$ type** No immediate.
+    - **$\texttt{B,I}$ type** 12 bits immediate. Shift instructions are I-type but repurpose the immediate field as a 5-bit shift amount for RV32I (6-bit for RV64I). `inst[30]` distinguishes arithmetic from logical right shift, while `inst[31:26]` are fixed to zero except `inst[30]` (Range: $\pm 4\text{KB}$). The immediate in the **branch** instruction is an offset relative to PC.
+    - **$\texttt{S}$ type** The 12‑bit immediate is split into high 7 bits (immediate) and low 5 bits (immed) (maintain regularity). The immediate in the **store** instruction is an offset relative to `rs1`.
+    - **$\texttt{J}$ type** 20 bits immediate.
+- Jump
+    - `jal`
+
+        - $rd \leftarrow PC + 4$, $PC \leftarrow PC + \text{sign-extend}(\{\text{inst}[31], \text{inst}[19:12], \text{inst}[20], \text{inst}[30:21]\})\times 2$ (Jumps are 2-byte aligned, so last bit is implicit zero).
+        - Range: $\pm 1\text{MB}$.
+        - Beyond 1MB: Use **AUIPC + JALR**.
+    - `jalr`
+
+        - $rd \leftarrow PC + 4$, $PC \leftarrow (rs1 + \text{sign-extend}(\text{inst}[31:20])) \ \&\ \sim 1$ ($\sim 1$ clears LSB to ensure 2‑byte alignment). 
+- Load and Store
+
+    `lw rd, offset (rs1)` means load data from memory and write into `rd`.
+
+    `sw rs2, offset (rs1)` means store data from register `rs2` into memory.
+- LUI loads a 20‑bit immediate into the upper bits of a register; AUIPC adds a 20‑bit immediate to the current PC for position‑independent addressing. 
+  <details> <summary>How to load a 32b const into a register?</summary>
+  
+    1. Use a LW instruction (cost more)
+    2. `lui` and `addi` (When the lower 12 bits of a 32‑bit constant are $\ge \texttt{0x800}$, `addi` sign‑extends them, causing an incorrect result. The assembler automatically adjusts the upper 20 bits when using the `li` pseudo‑instruction.) (Range: $4\text{GB}$)
+
+    </details>
+
 <details> <summary><strong>Instruction Encoding List</strong></summary>
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -379,34 +410,7 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 
 </details>
 
-- Three operand instruction format. 
-- X0 is always zero.
-- 32 means Address cability/Integer register length.
-- Immediate
-
-    - **$\texttt{R}$ type** No immediate.
-    - **$\texttt{B,I}$ type** 12 bits immediate. Shift instructions are I-type but repurpose the immediate field as a 5-bit shift amount for RV32I (6-bit for RV64I). `inst[30]` distinguishes arithmetic from logical right shift, while `inst[31:26]` are fixed to zero except `inst[30]` (Range: $\pm 4\text{KB}$). The immediate in the **branch** instruction is an offset relative to PC.
-    - **$\texttt{S}$ type** The 12‑bit immediate is split into high 7 bits (immediate) and low 5 bits (immed) (maintain regularity). The immediate in the **store** instruction is an offset relative to `rs1`.
-    - **$\texttt{J}$ type** 20 bits immediate.
-- LUI loads a 20‑bit immediate into the upper bits of a register; AUIPC adds a 20‑bit immediate to the current PC for position‑independent addressing. 
-  <details> <summary>How to load a 32b const into a register?</summary>
-  
-    1. Use a LW instruction (cost more)
-    2. `lui` and `addi` (When the lower 12 bits of a 32‑bit constant are $\ge \texttt{0x800}$, `addi` sign‑extends them, causing an incorrect result. The assembler automatically adjusts the upper 20 bits when using the `li` pseudo‑instruction.) (Range: $4\text{GB}$)
-
-    </details>
-
-- Jump
-    - `jal`
-
-        - $rd \leftarrow PC + 4$, $PC \leftarrow PC + \text{sign-extend}(\{\text{inst}[31], \text{inst}[19:12], \text{inst}[20], \text{inst}[30:21]\})\times 2$ (Jumps are 2-byte aligned, so last bit is implicit zero).
-        - Range: $\pm 1\text{MB}$.
-        - Beyond 1MB: Use **AUIPC + JALR**.
-    - `jalr`
-
-        - $rd \leftarrow PC + 4$, $PC \leftarrow (rs1 + \text{sign-extend}(\text{inst}[31:20])) \ \&\ \sim 1$ ($\sim 1$ clears LSB to ensure 2‑byte alignment). 
-
-- Regularity
+<details><summary><strong>Regularity</strong></summary>
   
 | Field | Bit Position | Note |
 | :---: | :---: | :---: |
@@ -416,6 +420,7 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 | **rs2** | $[20,24]$ | Source reg 2 |
 | **Length** | - | Fixed 16/32 bit |
 | **Immediate** | High bits | Uses rd field for branch/store |
+</details>
 
 <details><summary><strong>Pseudo Instrcution</strong></summary>
 
@@ -796,6 +801,8 @@ Without pipeline registers, stages would overwrite each other’s data, causing 
 - **Micro-architecture states**
     - $\red{\text{Piplined registers}}$ Pipelined registers hold transient data between stages for a few cycles.
     - Branch predictors
+
+        Static prediction: backward taken (like loop, back to the lower address), forward not taken.
     - Caches
     - Buffers and Quenes
     - Counters
@@ -809,7 +816,33 @@ A conflict arising due to hardware resourece limitations within the pipeline.
 
 - Pipeline stalls
 - Multiple resources
-- Instruction Reordering
+- Instruction Reordering 
+    
+    Static scheduling (by compiler) reorders instructions at compile time to avoid hazards, while dynamic scheduling (by hardware) reorders them at runtime based on actual data and resource availability.
 - ISA design
 
 ### Data Hazards
+
+A conflict arising because the current instruction depends on the result of a previous instruction that has not yet been computed or written back.
+
+|Scenario|Data Ready Stage|Data Used Stage|Example|
+|:--:|:--:|:--:|:--:|
+|Register Access Issues|$\texttt{EX}$|$\texttt{ID}$ <br>It bypasses the ALU, read in ID and held until MEM for memory write.|`add t0, t1, t2`<br> `sw t0, 4(t3)`|
+|ALU Result Access Issue|$\texttt{EX}$|$\texttt{EX}$|`add s0, t0, t1` <br> `sub t2, s0, t0`|
+|Load Hazard|$\texttt{MEM}$|$\texttt{EX}$|`lw s1, 4(s0)`<br>`add t0, s1, t1`|
+
+#### Solutions
+
+Flow dependence (RAW) is a true data dependence, while anti-dependence (WAR) and output dependence (WAW) are name dependences that can be eliminated by register renaming.
+
+- **Stall pipeline (Interlocking)** 
+
+- **Data Forwarding (Bypassing)** 
+
+    Add forwarding control logic to make extra connections in the datapath.
+
+    Hazard detection compares $\texttt{EX/MEM}$ and $\texttt{MEM/WB}$ destination registers with current instruction’s source registers. Forwarding is skipped when `RegWr == 0` or when the destination register is `x0`.
+
+- **Compiler Code Transformations** Scheduling (reordering) scope is often limited by branches, indirect branches, and call/ret.
+  
+### Control Hazards
