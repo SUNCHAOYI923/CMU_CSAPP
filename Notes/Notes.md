@@ -1,24 +1,14 @@
+# CSC3060 Introduction to Computer Systems
 # Chapter 1 A Tour of Computer System
 
 ### Compilation System
     
 Take C language as an example `linux > gcc hello.c -o hello`.
 
-- **Pre-processor** (cpp)   
-
-    $\texttt{.c} \to \texttt{.i}$ Handles include/define, strips off comments and conditional compilation #ifdef
-
-- **Compiler** (cc1)   
-
-    $\texttt{.i} \to \texttt{.s}$ Scan/parse/semantic check/code gen/opt
-
-- **Assembler** (as)   
-
-    $\texttt{.s} \to \texttt{.o}$ From assembly to machine code
-
-- **Linker** (ld) $\texttt{.o} \to \texttt{Executable}$ 
-
-    Relocation & reference resolution [重定位 & 引用解析]
+- **Pre-processor** (cpp) $\texttt{.c} \to \texttt{.i}$ Handles include/define, strips off comments and conditional compilation #ifdef
+- **Compiler** (cc1) $\texttt{.i} \to \texttt{.s}$ Scan/parse/semantic check/code gen/opt
+- **Assembler** (as) $\texttt{.s} \to \texttt{.o}$ From assembly to machine code
+- **Linker** (ld) $\texttt{.o} \to \texttt{Executable}$ Relocation & reference resolution
 
 ### Hardware Organization of a System
 
@@ -268,6 +258,8 @@ $\texttt{bias (float)} = 127 \quad \texttt{bias(double)} = 1023$ ($\texttt{bias}
 |Infinity|$e = 255$|$f = 0$|$V = \pm \infty$|
 |NaN (Not a Number) |$e = 255$|$f \neq 0$|`NaN`|
 
+When interpreted as signed integers, the bit representation of IEEE 754 floating-point numbers (excluding `NaN`) preserves the same sorting order.
+
 #### Comparison (postive number)
 
 |Format|Minimum|Maximum|
@@ -283,19 +275,41 @@ $\texttt{bias (float)} = 127 \quad \texttt{bias(double)} = 1023$ ($\texttt{bias}
 
 #### Floating Point Operations
 
-Lack of Associativity & Lack of Distributivity
+- **Lack of Associativity & Lack of Distributivity**
 
-<details><summary>Example Questions</summary>
+    <details><summary>Example Questions</summary>
 
-Let $x,f,d$ are of type `int`, `float`, `double` (Their values are arbitrary, except that neither $f$ nor $d$ equals $+\infty$, $-\infty$, or $\texttt{NaN}$.). Then:
+    Let $x,f,d$ are of type `int`, `float`, `double` (Their values are arbitrary, except that neither $f$ nor $d$ equals $+\infty$, $-\infty$, or $\texttt{NaN}$.). Then:
 
-- `x == (int)(double) x` True
-- `x == (int)(float) x` False $2^{24} - 1 \to (1 + 0.\underbrace{11\ldots 1}_{23\ \text{ones}}) \times 2^{23}$ (e.g. $16777217$)
-- `d == (double)(float) d` False (e.g. $1.234$)
-- `f == (float)(double) f` True
-- `d*d >= 0.0` True
+    - `x == (int)(double) x` True
+    - `x == (int)(float) x` False $2^{24} - 1 \to (1 + 0.\underbrace{11\ldots 1}_{23\ \text{ones}}) \times 2^{23}$ (e.g. $16777217$)
+    - `d == (double)(float) d` False (e.g. $1.234$)
+    - `f == (float)(double) f` True
+    - `d*d >= 0.0` True
 
-</details>
+    </details>
+
+- **Float Point Addition**
+
+    - Align decimal points (small to big)
+    - Add significands
+    - Normalize
+    - Round and renormalize if needed
+    
+    <details> <summary> Example </summary>
+
+    $$
+    \begin{align*}
+    & 9.999 \times 10^1 + 1.610 \times 10^{–1} \\
+    &= 9.999 \times 10^1 + 0.01610 \times 10^1 \\
+    &= 10.015 \times 10^1 \\
+    &= 1.0015 \times 10^2 \\
+    &= 1.002 \times 10^2
+    \end{align*}
+    $$
+    
+    </details>
+
 
 #### Precision (IEEE 754-2008 Standard Formats)
 
@@ -571,7 +585,8 @@ $$
 | x18–x27 | `s2`–`s11` | Callee | Saved registers |
 | x28–x31 | `t3`–`t6` | Caller | Temporary registers |
 
-Leaf routines use args & caller‑saved only (no save/restore any registers).  
+- **Caller-Saved** Caller decides whether to save based on whether the value will be used after the call.
+- **Callee-Saved** Callee must always save these registers before using them and restore them before returning (**absolutely safe**).
 
 <details> <summary>Why <strong>caller</strong> registers are allocated to temporaries?</summary>
 Temporaries are short-lived and do not need to survive across function calls.  Placing them in caller‑save registers avoids unnecessary save/restore code.
@@ -660,7 +675,9 @@ $$
 
 <details><summary> How to select between <code>PC+4</code> and <code>PC+immediate</code>?</summary>
 
-If a branch is taken or a jal instruction, select `pc+immed`. Otherwise select `PC+4`.
+If a branch is taken or a `jal` instruction, select `pc+immed`. Otherwise select `PC+4`.
+
+Note that `jal` and `jalr` use `pc + imm` as the target address, while writing `pc + 4` back to the register. In contrast, auipc writes `pc + imm` directly back to the register.
 
 </details>
 
@@ -724,8 +741,9 @@ On each clock cycle, the single‑cycle processor executes one instruction. Stat
 
 <details> <summary> Why does RV32I still need a dedicated Branch Comparator despite having an ALU? </summary>
 
-- Use Branch Comparision to avoid substruction overflow.
+- Use Branch Comparision to avoid substruction overflow (also faster than subtraction).
 - RV32I lacks architectural flags, it requires a dedicated comparator to enable single-cycle compare-and-branch operations by combining comparison and jump logic.   
+- The ALU at the EXE stage is needed for R-type instructions and Load/Store instructions.
 
 </details>
 
@@ -748,6 +766,8 @@ On each clock cycle, the single‑cycle processor executes one instruction. Stat
 - Throughput increases as more instructions complete per unit time, but single instruction latency (The time it takes for each instruction to be executed.) does not decrease and may even increase. 
 - Pipeline rate is limited by the slowest stage.
 - Potential/ideal speedup = Number of pipeline stages (number of pipeline steps).
+- Need to reduce possible fill and drain (e.g., I-cache misses and branch misprediction)
+
 
 ### Pipeline-oriented ISA Design
 
@@ -756,22 +776,28 @@ On each clock cycle, the single‑cycle processor executes one instruction. Stat
 - Only load/store instructions accessing memory.
 - Instructions are simple.
 
+Some principles of designing a pipelined datapath:
+
+- Multi-stage partitioning
+- Overlapped execution
+- Increased throughput
+- Improved resource utilization
+
 ### Single Cycle & Multi Cycle & Pipeline
 
 <img src="pic/20.png" width="60%" height="60%">
 
-|Implementation|Clock Cycle Time|Instruction Latency|
-|:--:|:--:|:--:|
-|Single-Cycle|Sum of all stage latencies| 1 $\times$ Clock Cycle Time|
-|Multi-Cycle|Longest stage latency|CPI $\times$ Clock Cycle Time|
-|Pipelined|Longest stage latency|Number of Stages $\times$ Clock Cycle Time|
+|Implementation|Clock Cycle Time|Instruction Latency|CPI|
+|:--:|:--:|:--:|:--:|
+|Single-Cycle|Sum of all stage latencies| 1 $\times$ Clock Cycle Time|$1$|
+|Multi-Cycle|Longest stage latency|CPI $\times$ Clock Cycle Time|$>1$|
+|Pipelined|Longest stage latency|Number of Stages $\times$ Clock Cycle Time|$>1$ (hazards)|
 
-### Latency
-
-- Stall
-- Long latency pipline (Subsequent instructions can continue to proceed)
-  
-No arithmetic exceptions allow **out‑of‑order retirement**, avoiding stalls for long‑latency instructions.
+- **Latency** The total time required to complete **one single instruction** from start to finish.
+- **Throughput** The total number of instructions completed **per unit** of time.
+- For superscalar implementation, CPI $<1$.
+- Single cycle as lower throughput but shorter instruction latency.
+- No arithmetic exceptions allow **out‑of‑order retirement**, avoiding stalls for long‑latency instructions.
 
 ### Pipline Registers
 
@@ -798,15 +824,21 @@ Without pipeline registers, stages would overwrite each other’s data, causing 
     - **user-level switch** (e.g. procedure call) saved on the runtime program stack (caller and callee convention).
     - **system-level switch** (e.g. process switch) saved on the Process Control Block (PCB) or the kernel stack.
 
-- **Micro-architecture states**
+- **Micro-architecture states** (invisible to the programmer)
     - $\red{\text{Piplined registers}}$ Pipelined registers hold transient data between stages for a few cycles.
     - Branch predictors
-
-        Static prediction: backward taken (like loop, back to the lower address), forward not taken.
     - Caches
     - Buffers and Quenes
     - Counters
 
+|Stage|Data Path|Control|
+|:--:|:--:|:--:|
+|$\texttt{ID}$|`rs1`, `rs2` designators|`immed_sel`|
+|$\texttt{EX}$|`rs1`, `rs2` contents, `PC`, `immed_value`|`Asel`, `Bsel`, `ALUsel`|
+|$\texttt{MEM}$|`ALUout` (Address), `rs2` contents |`MemRW` (read/write), `BrLt`, `Breq`|
+|$\texttt{WB}$|`ALUout`, `PC+4` (for link reg), `MEMout`|`Wbsel`, `rd` designator, `WRen`|
+
+<img src="pic/21.png" width="60%" height="60%">
 
 ## Hazards
 
@@ -819,7 +851,10 @@ A conflict arising due to hardware resourece limitations within the pipeline.
 - Instruction Reordering 
     
     Static scheduling (by compiler) reorders instructions at compile time to avoid hazards, while dynamic scheduling (by hardware) reorders them at runtime based on actual data and resource availability.
+
 - ISA design
+
+Split Instruction/Data caches can **avoid structural hazards in the pipeline** and **increase the cache access bandwidth**.
 
 ### Data Hazards
 
@@ -841,8 +876,79 @@ Flow dependence (RAW) is a true data dependence, while anti-dependence (WAR) and
 
     Add forwarding control logic to make extra connections in the datapath.
 
-    Hazard detection compares $\texttt{EX/MEM}$ and $\texttt{MEM/WB}$ destination registers with current instruction’s source registers. Forwarding is skipped when `RegWr == 0` or when the destination register is `x0`.
+    Hazard detection compares $\texttt{EX/MEM}$ and $\texttt{MEM/WB}$ destination registers with current instruction’s source registers. (EXE-EXE `EX/MEM.RegRd = ID/EX.RegRs1/2` and MEM-EXE `MEM/WB.RegRd = ID/EX.RegRs1/2`)
+    
+    Forwarding is skipped when `RegWr == 0` or when the destination register is `x0`.
 
-- **Compiler Code Transformations** Scheduling (reordering) scope is often limited by branches, indirect branches, and call/ret.
+- **Compiler Code Transformations** 
+
+    Scheduling (reordering) scope is often limited by branches, indirect branches, and call/ret. Memory aliasing (e.g., $p$ and $q$ may point to same address) and unknown latencies (e.g. cache hit/miss unpredictable) further restrict reordering. Compiler must conservatively preserve dependencies.
   
 ### Control Hazards
+
+Control hazards are due to branch instructions (conditional jumps) and JAL/JALR instructions (unconditional jumps). 
+
+Condition and Target Address are Ready at the $\texttt{EXE}$ Stage.
+
+#### Static Branch Prediction (Compile Time)
+
+- Predict a backward branch as taken (loop back branches) and predict a forward branch as fall-through (the compiler always puts the then part in the fall-through path).
+- Conditional branch's (e.g. `blt`) behavior is entirely program‑dependent and cannot be accurately predicted using simple static rules. However, static prediction can still be effective for special cases like `beq rs1, x0` due to common software patterns.
+- Unconditional branches (e.g. `jal`) always jump, static prediction should always predict **taken**.
+- The ISA may reserve a bit in branch instructions as a prediction bit.
+- When branch prediction is wrong, **pipeline flushing** is performed.
+
+#### Dynamic Branch Prediction (Run Time)
+
+- **Branch History Table (BHT)** (Branch prediction should occur at the instruction fetch (IF) stage.)
+
+    A branch history table stores past outcomes of branches, indexed by address, to predict future behavior and flush on misprediction.
+
+    Tag identifies which address occupies a cache slot. BHT **omits tags** because prediction bits (1–2) are tiny, tags huge (30–46 bits).
+
+    - **1-bit Predictor** Flips on every misprediction, fails on nested loops.
+    - **2-bit Predictor** Four-state FSM, changes only after two consecutive mispredictions, handles loops better.
+
+- **Correlated Predictor**
+    
+    Global history register selects a 2-bit counter entry in the pattern table. **Current PC** selects which table to use, separating **histories** for different branches.
+
+- **The Location Prediction**
+    
+    |Branch Type|Prediction Mechanism|Example|
+    |:--:|:--:|:--:|
+    |Direct branch|Branch Target Buffer (BTB), fixed target|`beq`, `jal`|
+    |Indirect branch|Hard to predict|`jalr x0, 4(x1)` (Return branch, Switch statements and Function pointers)|
+    |Function return|Return Address Stack (RAS) |`ret`|
+
+# Chapter 6 The Memory Hierarchy
+
+## Random Access Memory (RAM)
+
+Access time is the same for all locations.
+
+All unconventional DRAM chips offer much higher bandwidth, but the latency remains the same (The first data still takes the same time to arrive).
+
+|Feature|SRAM|DRAM|
+|:--:|:--:|:--:|
+|Transistors per bit|6 or 8|1|
+|Access time|1×|10×|
+|Refresh|No|Yes|
+|Error Detection and Correction|Optional|Yes|
+|Cost|High|Low|
+|Main applications|cache memories|main memory, frame buffers|
+
+### Static Random Access Memory (SRAM)
+
+### Dynamic Random Access Memory (DRAM)
+
+- **Reading DRAM Supercell** Select row $i$ via RAS, load into buffer. Select column $j$ via CAS, output data, then rewrite row to refresh.
+- **Memory Modules** A 64-bit word is stored across eight $8M \times 8$ DRAM chips in parallel, with each chip providing one byte (8 bits) at the same row and column address.
+
+- **Memory Wall** The gap between the speed of processors and the main memory.
+    - **Latency**
+        - **Reduction** local memory, NUMA, PIM
+        - **Hiding** multi-threading/Hyper-threading, WARP interleaving, chip-multithreading
+    - **Bandwidth**
+        - **Memory bandwidth** multi--banks and interleaved memory, SDRAM, HBM
+        - **Communication bandwith** wider bus, interconnection network
