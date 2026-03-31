@@ -1,4 +1,9 @@
 # CSC3060 Introduction to Computer Systems
+
+- **Textbook** *Computer Systems A Programmer’s Perspective, 3e, INTERNATIONAL EDITION* written by Randal Bryant and David R. O'Hallaron.
+
+- **Reference book** *Computer Organization and Design: The Hardware/Software Interface (RISC-V Edition)* written by David A. Patterson and John L. Hennessy.
+
 # Chapter 1 A Tour of Computer System
 
 ### Compilation System
@@ -12,7 +17,7 @@ Take C language as an example `linux > gcc hello.c -o hello`.
 
 ### Hardware Organization of a System
 
-<img src="pic/1.png" width="70%" height="70%">
+<img src="pic/1.png" width="50%" height="50%">
 
 DMA (Direct Memory Access) is usually used for high-spped and bulk data transfers, controlled by system programmers.
 
@@ -22,13 +27,13 @@ DMA (Direct Memory Access) is usually used for high-spped and bulk data transfer
 
 ### Memory Hierarchy
 
-<img src="pic/2.png" width="70%" height="70%">
+<img src="pic/2.png" width="50%" height="50%">
 
 The localities of cache: **Temporal Locality** & **Spatial Locality**.
 
 ### Abstractions in Computer Systems (Virtualization)
 
-<img src="pic/3.png" width="70%" height="70%">
+<img src="pic/3.png" width="50%" height="50%">
 
 Virtualization is often related to multiplicity, fake versions, and sharing.
 
@@ -217,7 +222,7 @@ $$
     \end{cases}
     $$
 
-    <img src="pic/12.png" width="70%" height="70%">
+    <img src="pic/12.png" width="50%" height="50%">
 
 ### Multipilication
 
@@ -302,8 +307,7 @@ When interpreted as signed integers, the bit representation of IEEE 754 floating
     \begin{align*}
     & 9.999 \times 10^1 + 1.610 \times 10^{–1} \\
     &= 9.999 \times 10^1 + 0.01610 \times 10^1 \\
-    &= 10.015 \times 10^1 \\
-    &= 1.0015 \times 10^2 \\
+    &= 10.015 \times 10^1 = 1.0015 \times 10^2 \\
     &= 1.002 \times 10^2
     \end{align*}
     $$
@@ -314,7 +318,7 @@ When interpreted as signed integers, the bit representation of IEEE 754 floating
 #### Precision (IEEE 754-2008 Standard Formats)
 
 | Format | Sign Bits | Exponent Bits | Mantissa Bits |
-|--------|-----------|---------------|---------------|
+|:--:|:--:|:--:|:--:|
 | Quad precision | 1 | 15 | 112 |
 | Double precision | 1 | 11 | 52 |
 | Single precision (FP32) | 1 | 8 | 23 |
@@ -351,6 +355,21 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 
 [RSA should be scalable, flexible, and extensible.]
 
+#### Variants of RV 
+
+- **RV32, RV64, RV128** Different data widths (addressing capability)
+
+|Extension|Description|
+|:--:|:--:|
+|I|Base integer instructions|
+|E|Base for embedded systems (e.g., only 16 registers)|
+|M|Integer multiplication and division|
+|A|Atomic memory instructions|
+|C|Compressed extension (16-bit instructions)|
+|F|Single-precision floating point|
+|D|Double-precision floating point|
+|V|Vector extension|
+
 #### Instruction Types in RV32I
 
 <img src="pic/14.png" width="50%" height="50%">
@@ -362,7 +381,7 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 |Memory Instructions|`lw` (No `lwu` in RV32I), `lh`, `lb`, `sw`, `sh`, `sb`, `lbu`, `lhu`|
 |Privileged Instructions|Interrupt, Memory Management, System Calls, Control and Status Registers (CSR), Mode Change|
 
-<img src="pic/13.png" width="50%" height="60%">
+<img src="pic/13.png" width="50%" height="50%">
 
 | Format | Name | Instructions |
 |--------|------|--------------|
@@ -588,6 +607,13 @@ $$
 - **Caller-Saved** Caller decides whether to save based on whether the value will be used after the call.
 - **Callee-Saved** Callee must always save these registers before using them and restore them before returning (**absolutely safe**).
 
+|Aspect|Caller-Saved|Callee-Saved|
+|:--:|:--:|:--:|
+|**Decision maker**|Caller|Callee|
+|**Mandatory**|On demand (only if value is needed after the call)|Yes|
+|**Save timing**|Before calling a subroutine|At function entry|
+|**Restore timing**|After subroutine returns|Before function returns|
+
 <details> <summary>Why <strong>caller</strong> registers are allocated to temporaries?</summary>
 Temporaries are short-lived and do not need to survive across function calls.  Placing them in caller‑save registers avoids unnecessary save/restore code.
 </details>
@@ -671,7 +697,7 @@ $$
 
 ### Abstract View of RV32I Subset
 
-<img src="pic/18.png" width="80%" height="80%">
+<img src="pic/18.png" width="50%" height="50%">
 
 <details><summary> How to select between <code>PC+4</code> and <code>PC+immediate</code>?</summary>
 
@@ -734,7 +760,7 @@ On each clock cycle, the single‑cycle processor executes one instruction. Stat
 
 ### Control
 
-<img src="pic/19.png" width="90%" height="80%">
+<img src="pic/19.png" width="50%" height="50%">
 
 - `Asel` `rs1` or `pc` (When use `jal`, the target is `PC + offset`.)
 - `Bsel` `rs2` or `immed`.
@@ -785,7 +811,7 @@ Some principles of designing a pipelined datapath:
 
 ### Single Cycle & Multi Cycle & Pipeline
 
-<img src="pic/20.png" width="60%" height="60%">
+<img src="pic/20.png" width="50%" height="50%">
 
 |Implementation|Clock Cycle Time|Instruction Latency|CPI|
 |:--:|:--:|:--:|:--:|
@@ -838,7 +864,7 @@ Without pipeline registers, stages would overwrite each other’s data, causing 
 |$\texttt{MEM}$|`ALUout` (Address), `rs2` contents |`MemRW` (read/write), `BrLt`, `Breq`|
 |$\texttt{WB}$|`ALUout`, `PC+4` (for link reg), `MEMout`|`Wbsel`, `rd` designator, `WRen`|
 
-<img src="pic/21.png" width="60%" height="60%">
+<img src="pic/21.png" width="50%" height="50%">
 
 ## Hazards
 
@@ -931,12 +957,12 @@ All unconventional DRAM chips offer much higher bandwidth, but the latency remai
 
 |Feature|SRAM|DRAM|
 |:--:|:--:|:--:|
-|Transistors per bit|6 or 8|1|
+|Transistors per bit|$[4,8]$|$1$|
 |Access time|1×|10×|
 |Refresh|No|Yes|
 |Error Detection and Correction|Optional|Yes|
 |Cost|High|Low|
-|Main applications|cache memories|main memory, frame buffers|
+|Main applications|cache memories|**main memory**, frame buffers|
 
 ### Static Random Access Memory (SRAM)
 
@@ -945,10 +971,59 @@ All unconventional DRAM chips offer much higher bandwidth, but the latency remai
 - **Reading DRAM Supercell** Select row $i$ via RAS, load into buffer. Select column $j$ via CAS, output data, then rewrite row to refresh.
 - **Memory Modules** A 64-bit word is stored across eight $8M \times 8$ DRAM chips in parallel, with each chip providing one byte (8 bits) at the same row and column address.
 
-- **Memory Wall** The gap between the speed of processors and the main memory.
+- **Memory Wall** The gap between the speed of processors and the main memory. The bottleneck has shifted from how fast memory can respond (latency) to how much data it can deliver per second (bandwidth).
     - **Latency**
-        - **Reduction** local memory, NUMA, PIM
-        - **Hiding** multi-threading/Hyper-threading, WARP interleaving, chip-multithreading
+        - **Reduction** local memory, NUMA, PIM (Reduce the waiting time for each visit.)
+        - **Hiding** multi-threading/Hyper-threading, WARP interleaving, chip-multithreading (Keep computation units busy.)
     - **Bandwidth**
-        - **Memory bandwidth** multi--banks and interleaved memory, SDRAM, HBM
+        - **Memory bandwidth** multi-banks and interleaved memory, SDRAM, HBM
         - **Communication bandwith** wider bus, interconnection network
+
+## Locality
+
+- **Principle** Many Programs tend to use data and instructions with addresses near or equal to those they have used recently.
+
+- **Temporal locality** Recently referenced items are likely to be referenced again in the near future.
+
+- **Spatial locality** Items with nearby addresses tend to be referenced close together in time.
+
+## Memory Hierarchy
+
+| Level Transfer | Staging Unit | Typical Size | Controlled By |
+|:--:|:--:|:--:|:--:|
+| Registers ↔ Memory | Instruction Operands | Bits / words (e.g., 32/64 bits) | Compiler (Programmer) |
+| Cache / Local Memory ↔ Memory | Blocks / Lines | 64 B (cache line) | Hardware (Cache Controller) / Compiler or Programmer (Local Memory) |
+| Memory ↔ Disks | Pages | 4 KB (page) | Hardware & OS (Virtual Memory) / Programmer (Files) |
+| Disks ↔ Tapes | Files | Variable (e.g., 64 KB–1 MB) | Hardware / Operator or Programmer |
+
+This gives you Large, Cheap memory, but Fast access.
+
+Caches provide automatic (transparent) data movement, while local memory requires explicit programmer-controlled data management.
+
+## Cache
+
+### Direct Mapped
+
+<img src="pic/22.png" width="50%" height="50%">
+
+- **Valid Bit**
+
+    A cache line is invalid (valid bit equals to $0$) when:
+
+    - When a cache line of data has not come back from memory yet
+    - Cache line is currently being replaced
+    - Cache is flushed
+
+- **Three Steps**
+
+    - **Set Selection** Use the set index as an unsigned binary number to locate the cache set.
+    - **Line Matching** Compare the tag to determine if the desired block is present in the set.
+    - **Word Extraction** Use the block offset as a binary number to select the appropriate word within the cache line.
+
+<details><summary>Why is the set index typically taken from the middle bits of the address rather than the high bits?</summary>
+
+Using high bits as the set index causes consecutive memory blocks to map to the same set, leading to more conflict misses, whereas middle bits distribute blocks across sets to better exploit spatial locality.
+
+</details>
+
+### Fully Associative
