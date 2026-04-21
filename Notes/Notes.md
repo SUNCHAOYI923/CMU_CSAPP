@@ -587,6 +587,12 @@ $$
 3. **Set cause** Write exception/interrupt reason to `mcause`
 4. **Jump to handler** Jump to exception handler entry point based on `mtvec` configuration
 
+#### Frame Pointer (fp)/Stack Pointer (sp)
+
+- sp points to the top of stack.
+- fp points to a fixed location within the current stack frame, typically the address where the old fp is stored.
+- When the function returns, the saved old fp is restored to the fp register, making fp point back to the caller's stack frame.
+
 #### Calling Convention
 
 | RV Registers | ABI Name | Caller/Callee | Purpose |
@@ -606,6 +612,7 @@ $$
 
 - **Caller-Saved** Caller decides whether to save based on whether the value will be used after the call.
 - **Callee-Saved** Callee must always save these registers before using them and restore them before returning (**absolutely safe**).
+- Array variables are typically allocated in memory (stack or static data section), not in registers.
 
 |Aspect|Caller-Saved|Callee-Saved|
 |:--:|:--:|:--:|
@@ -615,15 +622,21 @@ $$
 |**Restore timing**|After subroutine returns|Before function returns|
 
 <details> <summary>Why <strong>caller</strong> registers are allocated to temporaries?</summary>
+
 Temporaries are short-lived and do not need to survive across function calls.  Placing them in caller‑save registers avoids unnecessary save/restore code.
+
 </details>
 
 <details> <summary>Why <strong>callee</strong> registers are allocated to local variables?</summary>
+
 Local variables live across function calls. Using callee registers ensures they are preserved automatically by the callee, avoiding repeated saves at each call site.
+
 </details>
 
 <details> <summary>Why <strong>callee</strong> registers are allocated to CSEs (Common Sub-Expressions)?</summary>
+
 Local variables and CSEs are tend to live longer (may be as long as the procedure invocation).
+
 </details>
 
 ### CISC [optimized for compact code size]
@@ -819,7 +832,7 @@ Some principles of designing a pipelined datapath:
 |Multi-Cycle|Longest stage latency|CPI $\times$ Clock Cycle Time|$>1$|
 |Pipelined|Longest stage latency|Number of Stages $\times$ Clock Cycle Time|$>1$ (hazards)|
 
-- **Latency** The total time required to complete **one single instruction** from start to finish.
+- **Latency** The total time required to complete **one single instruction** from start to finish. (Single-cycle data path actually has shorter instruction latency because of the setup time and propagation delay in pipeline.)
 - **Throughput** The total number of instructions completed **per unit** of time.
 - For superscalar implementation, CPI $<1$.
 - Single cycle as lower throughput but shorter instruction latency.
@@ -919,7 +932,7 @@ Condition and Target Address are Ready at the $\texttt{EXE}$ Stage.
 #### Static Branch Prediction (Compile Time)
 
 - Predict a backward branch as taken (loop back branches) and predict a forward branch as fall-through (the compiler always puts the then part in the fall-through path).
-- Conditional branch's (e.g. `blt`) behavior is entirely program‑dependent and cannot be accurately predicted using simple static rules. However, static prediction can still be effective for special cases like `beq rs1, x0` due to common software patterns.
+- Conditional branch's (e.g. `blt`) behavior is entirely program‑dependent and cannot be accurately predicted using simple static rules. **Static branch prediction does not read registers at runtime**. It only considers whether the branch target is forward or backward.
 - Unconditional branches (e.g. `jal`) always jump, static prediction should always predict **taken**.
 - The ISA may reserve a bit in branch instructions as a prediction bit.
 - When branch prediction is wrong, **pipeline flushing** is performed.
@@ -949,7 +962,7 @@ Condition and Target Address are Ready at the $\texttt{EXE}$ Stage.
 
 # Chapter 6 The Memory Hierarchy
 
-## Random Access Memory (RAM)
+## Storage Technologies
 
 Access time is the same for all locations.
 
@@ -971,40 +984,73 @@ All unconventional DRAM chips offer much higher bandwidth, but the latency remai
 - **Reading DRAM Supercell** Select row $i$ via RAS, load into buffer. Select column $j$ via CAS, output data, then rewrite row to refresh.
 - **Memory Modules** A 64-bit word is stored across eight $8M \times 8$ DRAM chips in parallel, with each chip providing one byte (8 bits) at the same row and column address.
 
-- **Memory Wall** The gap between the speed of processors and the main memory. The bottleneck has shifted from how fast memory can respond (latency) to how much data it can deliver per second (bandwidth).
-    - **Latency**
-        - **Reduction** local memory, NUMA, PIM (Reduce the waiting time for each visit.)
-        - **Hiding** multi-threading/Hyper-threading, WARP interleaving, chip-multithreading (Keep computation units busy.)
-    - **Bandwidth**
-        - **Memory bandwidth** multi-banks and interleaved memory, SDRAM, HBM
-        - **Communication bandwith** wider bus, interconnection network
+### Memory Wall
+
+The gap between the speed of processors and the main memory. The bottleneck has shifted from how fast memory can respond (latency) to how much data it can deliver per second (bandwidth).
+
+#### Latency
+
+- **Reduction** local memory, NUMA, PIM (Reduce the waiting time for each visit.)
+- **Hiding** multi-threading/Hyper-threading, WARP interleaving, chip-multithreading (Keep computation units busy.)
+
+#### Bandwidth
+
+  - **Memory bandwidth** multi-banks and interleaved memory, SDRAM, HBM
+  - **Communication bandwith** wider bus, interconnection network
 
 ## Locality
 
-- **Principle** Many Programs tend to use data and instructions with addresses near or equal to those they have used recently.
+### Principle
 
-- **Temporal locality** Recently referenced items are likely to be referenced again in the near future.
+Many Programs tend to use data and instructions with addresses near or equal to those they have used recently.
 
-- **Spatial locality** Items with nearby addresses tend to be referenced close together in time.
+### emporal locality
+
+Recently referenced items are likely to be referenced again in the near future.
+
+### Spatial locality
+
+Items with nearby addresses tend to be referenced close together in time.
+
+<details><summary> What locality is exhibited by the following C loop? </summary>
+
+```c
+while (A != NULL) A = A->next;
+```
+
+A. Data temporal locality &nbsp; B. Data spatial locality &nbsp; C. Structural locality &nbsp; D. Instruction temporal locality &nbsp; E. Instruction spatial locality
+
+**Answer**
+
+D and E. The loop repeatedly executes the same small set of contiguous instructions (instruction spatial locality) and reuses those instruction addresses across iterations (instruction temporal locality); data locality is absent because each list node is accessed only once and nodes may not be contiguous in memory.
+
+</details>
 
 ## Memory Hierarchy
+
+<img src="pic/26.png" width="60%" height="60%">
 
 | Level Transfer | Staging Unit | Typical Size | Controlled By |
 |:--:|:--:|:--:|:--:|
 | Registers ↔ Memory | Instruction Operands | Bits / words (e.g., 32/64 bits) | Compiler (Programmer) |
 | Cache / Local Memory ↔ Memory | Blocks / Lines | 64 B (cache line) | Hardware (Cache Controller) / Compiler or Programmer (Local Memory) |
-| Memory ↔ Disks | Pages | 4 KB (page) | Hardware & OS (Virtual Memory) / Programmer (Files) |
+| Memory ↔ Disks | Pages | 4 KB (page) | Hardware & OS (**Virtual Memory**) / Programmer (Files) |
 | Disks ↔ Tapes | Files | Variable (e.g., 64 KB–1 MB) | Hardware / Operator or Programmer |
 
 This gives you Large, Cheap memory, but Fast access.
 
 Caches provide automatic (transparent) data movement, while local memory requires explicit programmer-controlled data management.
 
-## Cache
+<img src="pic/24.png" width="60%" height="60%">
 
-### Direct Mapped
+
+## Cache Management
+
+### General Cache Memory Organization
 
 <img src="pic/22.png" width="50%" height="50%">
+
+### Direct Mapped Caches
 
 - **Valid Bit**
 
@@ -1026,4 +1072,186 @@ Using high bits as the set index causes consecutive memory blocks to map to the 
 
 </details>
 
-### Fully Associative
+### Set Associative Caches
+
+$N$-way set-associative has $N$ lines per set while direct-mapped is one way and fully associative is one set.
+
+Given a cache with total size $C$ measured in kilobytes, associativity $E$, and block size $B$ measured in bytes. The number of sets $S$ is calculated as $S = \frac{1024C}{BE}$.
+
+### Performance Impact of Cache Parameters
+
+<img src="pic/25.png" width="60%" height="60%">
+
+| Feature | L1 Cache | L2 Cache |
+|:--:|:--:|:--:|
+| Primary goal | Minimize hit time | Minimize miss rate |
+| Locality preference | Spatial locality | Temporal locality |
+| Typical write policy | Write-through | Write-back |
+| Reason | L1 hit directly affects pipeline | L2 miss leads to high memory penalty |
+| Associativity | Low | High |
+| Size | Small | Large |
+
+
+- When the block size is too small, the cache cannot fetch enough contiguous data in a single miss (lower spatial locality -- most accesses to nearby addresses still result in cache misses).
+- When the block size is too large, the fixed-size cache holds fewer blocks, leading to more conflicts, frequent replacements and higher miss penalty (lower temporal locality -- the recently used data is quickly evicted before it can be reused).
+- Number of cache lines is determined by the cache size and the line size.
+
+| Parameter / Change | Block Offset Bits | Set Index Bits | Tag Bits |
+|:---|:---:|:---:|:---:|
+| Formula (64‑bit address) | $\log_2 B$ | $\log_2 S$ | $64 - \log_2 B - \log_2 S$ |
+| Increase block size $B$ | $\uparrow$ | $\downarrow$ | — |
+| Increase cache size $C$ | — | $\uparrow$ | $\downarrow$ |
+| Increase associativity $E$ | — | $\downarrow$ | $\uparrow$ |
+
+### Cache Hit and Miss
+
+#### Cache Read
+
+- **Read Hit**
+
+- **Read Miss** When a read miss occurs, the CPU stalls the pipeline, fetches the missing block from the next memory level, and then resumes execution.
+
+#### Cache Write
+
+- **Write Hit**
+
+    - **Write Through** 
+
+        It simultaneously updated to cache and memory. It ensures data isn't lost if the cache is disrupted, but increases memory traffic and write latency. 
+        
+        Solution:  **write buffer**. A write buffer hides write latency, but if store frequency exceeds the DRAM write cycle, the buffer saturates and stalls the CPU (Write buffer allows write-coalescing/combining to reduce traffic to memory.).
+    
+    - **Write Back** 
+        
+        The CPU writes data only to the cache initially, and main memory is not updated until the cache line is eventually replaced (need Dirty Bit). This reduces memory traffic and write latency, but creates cache-memory inconsistency, requiring cache coherence protocols (e.g., MESI) in multi-core systems. Data loss risk on cache failure is mitigated by Error Correcting Code (ECC) protection.
+
+- **Write Miss**
+    - **Write Allocate** First read the data from main memory and loaded into the cache, and then the write operation is performed on the cached copy.
+    - **No Write Allocate** It writes the data directly to main memory without loading the missing block into the cache (Better for streaming writes, e.g. writing database logs).
+
+| Aspect | Write Through + No Write Allocate | Write Back + Write Allocate |
+|:--:|:--:|:--:|
+| **Write Miss Behavior** | Bypass cache, write directly to main memory (optionally via write buffer + write-combining) | Load missing block from main memory into cache first, then write to cache |
+| **Typical Partner** | Write Through Cache | Copy Back (Write Back) Cache |
+| **Initial Cost** | Low (no main memory read) | High (one read miss) |
+| **Reuse Cost** | High (data not in cache, still miss on reuse) | Low (subsequent reads/writes hit in cache, only set dirty bit) |
+| **Best For** | Write once, never reused data (e.g., writing logs) | Repeated reads/writes to same data (temporal locality) |
+
+#### Instruction Cache Miss Handling
+
+On an instruction cache miss, the CPU sends the PC to memory, waits for the read to complete, writes the fetched data into cache with its tag and valid bit set, then restarts the instruction fetch. (Instruction cache prefetching is a commonly used hardware optimization to reduce instruction cache misses.)
+
+<details><summary> Can you prefetch for instruction cache in software? </summary>
+
+Software cannot directly prefetch instructions (the fetch stage is PC-driven), unlike data prefetching. It can only indirectly affect I-cache hit rate via code layout or execution order.
+
+</details>
+
+<details><summary> If we prefetch on every miss, why not just use a larger cache line size? </summary>
+
+- **Branch-sensitive** Prefetching follows the predicted path, fetching only useful instructions. Large lines load all adjacent instructions regardless of branches, wasting bandwidth and cache space on dead code.
+- **False sharing** Large lines reduce effective cache capacity, more likely to cause conflict.
+- **Bandwidth-aware** Large line increases the cost of every miss. Prefetch is more flexible.
+
+</details>
+
+<details><summary> Why does the GPU prefetch for the next 10-12 lines, but the CPU only prefetches for 1-2 lines?  </summary>
+
+GPU prefetches 10–12 lines because it is throughput‑oriented with highly linear instruction flow, making deep prefetch safe, while CPU, being latency‑sensitive with frequent branches, only prefetches 1–2 lines to avoid polluting the cache and wasting bandwidth on wrong paths.
+
+</details>
+
+#### Types of Cache Misses
+
+- **Compulsory (or Cold) Miss** The first access to a block that has never been loaded into the cache before. (Hardware prefetching & larger cache **line** size to reduce compulsory misses.)
+- **Conflict (or Collision) Miss** Multiple references are mapping to the same set, and the set is not large enough to hold them. 
+- **Capacity Miss** Cache is not large enough to hold needed blocks.
+- **Coherence Miss** Caused by invalidation from other processors in a multiprocessor system to maintain cache coherence.
+
+#### Ways to Reduce Cache Miss Penalty
+
+| Technique | Core Idea | How It Hides Penalty |
+|-----------|-----------|----------------------|
+| Critical Word First and Early Restart | Fetch requested word first; resume execution immediately | Reduces wait time; overlaps load with execution |
+| Non-Blocking Cache | Continue on miss; track multiple misses with MSHRs | Overlaps multiple misses |
+| Cache Prefetching | Fetch data before it is needed | Avoids miss entirely |
+| Write Buffer | Hold dirty blocks temporarily; write back later | CPU doesn't wait for write |
+| Cache-Aware Code Scheduling | Compiler reorders instructions | Overlaps miss with computation |
+
+### Non-Blocking Cache and Blocking Cache
+
+#### Blocking Cache
+
+A cache miss stalls the CPU pipeline immediately (stall on miss).
+
+#### Non-Blocking Cache (Lockup-Free Cache)
+
+The CPU continues executing other instructions on a miss and stalls only when the data is needed, using **Miss Status Holding Register** (MSHRs) to track outstanding misses (stall on use). Non-blocking caches support MLP (Memory Level Parallelism).
+
+- **Hit under Miss** During one miss, the cache can still handle subsequent hits.
+- **Miss under Miss (better)** During one miss, the cache can also handle another miss, allowing multiple outstanding misses. 
+
+### Cache Block Replacement
+
+#### Direct Mapped
+
+Each set has only one line, so the new block always replaces the existing block in that set.
+
+#### Set ssociative or Fully Associative
+
+- **Random**
+
+- **Least Recently Used (LRU)** [stack algorithm]
+  
+    Hardware keeps track of the access history and replaces the block that has not been used for the longest time.
+
+    Each block has a counter. On a hit, reset its counter to 0 and increment all other counters in the set. On a miss, replace the block with the highest counter value.
+
+
+- **First In First Out (FIFO)** The block that has been in the cache the longest is replaced, regardless of access history.
+
+- **Belady’s Algorithm** [upper bound]
+
+    Replace the block that will not be used for the longest time in the future. It is optimal but requires perfect knowledge of future accesses, making it impractical for real hardware.
+
+### Victim Cache
+
+A small fully associative cache placed between the main cache and memory to hold recently evicted blocks, reducing conflict misses by providing a second chance for recently replaced data. Since such conflicts occur in only a few sets, just 4–8 entries suffice for fast access, combining the speed of direct-mapped L1 with the benefit of full associativity.
+
+<img src="pic/23.png" width="50%" height="50%">
+
+### Snoopy Cache Coherence Schemes
+
+Snoopy cache maintains coherence in bus-connected multi-processors by broadcasting all coherence operations over a shared bus. Every cache controller snoops the bus and reacts based on its local cache state. Each controller is a bidirectional state machine that processes CPU requests and bus snoop events, updating states according to a transition diagram.
+
+Multiple controllers form a distributed algorithm operating at cache block granularity. The MESI protocol, with its four states (Modified, Exclusive, Shared, Invalid), tracks each block to enable coherence while minimizing bus traffic and memory accesses.
+
+### Exclusive/Inclusive Caches
+
+Inclusive L2 caches simplify coherence invalidation in multiprocessor systems by checking at the L2 level, despite wasting capacity, which modern processors tolerate for easier consistency management, making inclusive more common than exclusive today.
+
+#### Inclusive caches 
+
+Every line in L1 must be presented in L2 ($\text{L1} \subseteq \text{L2}$). When L2 evicts a line, it must invalidate the corresponding line in L1, and L2 can have a larger line size than L1.
+
+#### Exclusive caches 
+
+If a line, A, is in L1, it must NOT be presented in L2. AMD had adopted this for L2/L3. When L1 evicts a line, it moves to L2. On an L1 miss that hits in L2, the line migrates from L2 to L1. And L1 and L2 must have the same line size.
+
+#### NINE (Non-Inclusive and Non-Exclusive)  
+
+More suitable for L2/L3.
+
+### Average Memory Access Time (AMAT)
+
+Usually, `%instr` is higher than `%data`, but I-cache hits better because instruction accesses are highly sequential with strong spatial locality, have no write misses (read-only), and exhibit simpler access patterns than data references, which often involve random pointers or strided array accesses.
+
+AMAT was accurate for blocking caches and in-order CPUs, but lost relevance as out-of-order execution, non-blocking caches, prefetching hid miss latency and spliting I/D caches.
+
+#### Low Hit Latency
+
+- **Small and Simple**
+- **Direct-map or low associativity** Number of comparators needed equals total cache entries for fully associative, but only $n$ for $n$-way set associative.
+- **Prediction** Predict which way to compare first.
+- **Virtual address cache or virtual index and physical tagged cache** Avoid or overlap with address translation delay.
+- **Cache layout closer to CPU to minimize signal delay**
