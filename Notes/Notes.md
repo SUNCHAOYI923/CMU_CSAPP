@@ -958,7 +958,69 @@ Condition and Target Address are Ready at the $\texttt{EXE}$ Stage.
     |:--:|:--:|:--:|
     |Direct branch|Branch Target Buffer (BTB), fixed target|`beq`, `jal`|
     |Indirect branch|Hard to predict|`jalr x0, 4(x1)` (Return branch, Switch statements and Function pointers)|
-    |Function return|Return Address Stack (RAS) |`ret`|
+    |Function return|Return Address Stack (RAS)|`ret`|
+
+# Chapter 5 Optimizing Program Performance
+
+## Compiler Optimization
+
+### Compiler Optimization Levels
+
+| Level | Description |
+|:--:|:--:|
+| `-O0` | No optimizations, fast compile, for debugging. |
+| `-O1` | Basic optimizations. |
+| `-O2` | Recommended default: safe, stable, efficient. |
+| `-O3` | Aggressive (loop unroll, SIMD). May increase code size, compile time, and even hurt performance. |
+| `-O4` | `-O3` + Link-Time Optimization (LTO). |
+
+### General Goals
+
+#### Minimize the Number of Instructions
+
+- **Common Subexpression Elimination (CSE)** Calculate the same expression once and reuse the result.
+- **Dead Code Elimination (DCE)** Don't calculate values that are never used.
+- **Strength Reduction (SR)** Avoid slow instructions (multiplication/division).
+
+#### Minimize the Execution Cycles
+
+- **Register Allocation (RA)** Keep frequently used variables in registers.
+- **Code Scheduling** Reorder instructions to avoid stalls.
+- **Locality Improvement**
+- **Preload & Redundant Load Elimination** Load a value once and reuse it, instead of reloading from memory.
+
+#### Avoid Branching
+
+- **Avoid Branching** Conditional move in x86 (`cmov`, e.g. `a = (b > c) ? b : c`), conditional execution in ARM (e.g. `addgt r0, r1, r2`).
+- **Loop Unrolling** Reduce the number of branch instructions. Loop unrolling improves performance by reducing the number of branch evaluations and branch mispredictions, also creates opportunities for CSE, code motion, and scheduling.
+- **Procedure Inlining** Reduce the overhead of the call. However, inlining can cause register or I‑cache spilling when code grows too large. For recursive functions, inlining may lead to infinite expansion unless the compiler enforces a depth limit.
+- **Unswitching** Move a condition outside the loop to avoid branching inside the loop. (e.g. `if (cond) { for (...) { ... } } else { for (...) { ... } }`)
+
+### Limitations
+
+1. Compilers cannot change the algorithm.
+2. Compilers must obey the rules and semantics of the programming language.
+
+    - **Memory Aliasing** Two pointers may point to the same memory location. Use a local variable for the intermediate value to avoid redundant loads or use the `restrict` qualifier to promise no aliasing.
+    - **FP Associativity** Floating-point addition is not associative.
+    - **Function Side Effects** A function may modify global state or have observable effects beyond its return value.
+    - **Volatile Variables** A variable declared as `volatile` can be changed by external factors.
+    - **Memory Consistency** In multi-threaded programs, compilers must respect memory ordering constraints.
+3. Lack of runtime and domain knowledge.
+4. Many specific optimization problems are NP-hard.
+5. Boundary crossing issues (separate compilation).
+
+### Several Optimization Options
+
+| Flag | Description |
+|:--:|:--:|
+| `-O3 -flto` | Link-Time Optimization: enables whole-program optimization. |
+| `-march=native` | Generate code optimized for the current CPU architecture (enables all supported instruction sets). |
+| `-mtune=native` | Optimize instruction scheduling for the current CPU without breaking compatibility with older CPUs. |
+| `-fprofile-generate` | Compile instrumented code to generate runtime profiles. |
+| `-fprofile-use` | Use profile data to guide optimizations. |
+| `-Ofast` | Alias for `-O3 -ffast-math`; allows aggressive FP reordering (may break IEEE compliance). |
+| `-fopt-info-missed` | Report which optimizations were missed and why. |
 
 # Chapter 6 The Memory Hierarchy
 
@@ -1255,3 +1317,158 @@ AMAT was accurate for blocking caches and in-order CPUs, but lost relevance as o
 - **Prediction** Predict which way to compare first.
 - **Virtual address cache or virtual index and physical tagged cache** Avoid or overlap with address translation delay.
 - **Cache layout closer to CPU to minimize signal delay**
+
+# Chapter 7 Linking
+
+## Why Linking Matters
+
+### Modularity
+
+Separate compilation allows developers to work on different modules independently, improving productivity and enabling code reuse.
+
+### Efficiency
+
+- **Time** Separate compilation & Parallel compilation.
+- **Space** Static linking (Executable files and running memory images contain only the library code they actually use.) & Dynamic linking (Executable files contain no library code. During execution, a single copy of the library code is shared among all executing processes.)
+
+## Static Linking
+
+### Symbol Resolution
+
+Symbol tables in object files record symbol definitions (name, size, location), and the linker matches each symbol reference to exactly one definition during symbol resolution.
+
+#### Link Symbols
+
+| Type | Description | Example |
+|:--:|:--:|:--:|
+| **Global symbols** | Defined by module m, can be referenced by other modules. | `int global_var = 10;`<br>`void func() { }` |
+| **External symbols** | Referenced by module m but defined by some other module. | `extern int global_var;`<br>`extern void func();` |
+| **Local symbols** | Defined and referenced exclusively by module m. | `static int local_var = 10;`<br>`static void helper() { }` |
+
+Strong symbols are procedures and initialized globals, while weak symbols are uninitialized globals. Linker's Symbol Rules: Multiple strong symbols are forbidden; one strong wins over weak; multiple weak are arbitrary, unless `-fno-common` forces an error.
+
+<details><summary> Example </summary>
+
+- `file1.c`
+
+    ```c
+    int x = 10; // strong symbol   
+    int y = 5;  // strong symbol
+    void p1() {printf("x = %d, y = %d\n", x, y);}
+    ```
+
+- `file2.c`
+
+    ```c
+    double x; // weak symbol
+    void p2() {printf("x = %f\n", x);}
+    ``` 
+
+Writes to $x$ in `p2` might overwrite $y$.
+
+</details>
+
+Avoid **global symbols** if possible, otherwise use `static` to limit scope, initialize globals to make them strong, and reference external globals with `extern` to avoid linker errors.
+
+#### Static Libraries
+
+Concatenate related relocatable object files into a single file with an index (called an archive). For example, `ar rs libfoo.a a.o b.o c.o` creates a static library `libfoo.a` containing `a.o`, `b.o`, and `c.o`. 
+
+Linkers scan files left to right, maintain an unresolved reference list, and only extract archive members that resolve current entries, so libraries must come at the end of the command line.
+
+The solution to deal with the order sensitivity and duplicate symbol definitions is to introduce Shared libraries are object files whose code and data are loaded and linked into an application dynamically, either at load time or at run time.
+
+### Relocation
+
+It first merges all separate code and data sections into single sections. Then, it relocates symbols from their relative offsets in `.o` files to final absolute addresses in the executable. Finally, it updates every reference to these symbols to reflect their new positions.
+
+## Object Files
+
+### Classification
+
+| Type | Extension (Linux/Unix) | Description |
+|:--:|:--:|:--:|
+| **Relocatable Object File** | `.o` | Contains code and data in a form that can be combined with other relocatable object files to form an executable object file. Each `.o` file is produced from exactly one source (`.c`) file. |
+| **Executable Object File** | `a.out`| Contains code and data in a form that can be copied directly into memory and then executed. |
+| **Shared Object File** | `.so` |Special type of relocatable object file that can be loaded into memory and linked dynamically, at either load time or run-time. It also called Dynamic Link Libraries (DLLs) by Windows. |
+
+### ELF Object File Format
+
+<div style="display: flex; align-items: center; gap: 20px;">
+  <div style="flex: 1;">
+
+| Component | Description |
+|-----------|-------------|
+| **ELF Header** | Word size, byte ordering, file type (`.o` / executable / `.so`), machine type, etc. |
+| **Segment Header Table** (for OS) | Page size, virtual address memory segments (sections), segment sizes. |
+| **.text** | Code |
+| **.rodata** | Read-only data: jump tables, string constants, etc. |
+| **.data** | Initialized **global variables** and **initialized local static variables**. |
+| **.bss** | Uninitialized **global variables** and **uninitialized local static variables**. <br> Has section header but occupies no space. |
+| **.symtab** | Symbol table: **procedure names**, **global variable names**, **static variable names**, **external symbols**, section names, and their locations. |
+| **.rel.text** | Relocation info for `.text` section: addresses of **instructions** that will need to be modified in the executable, plus instructions for modifying. |
+| **.rel.data** | Relocation info for `.data` section: addresses of **pointer** data that will need to be modified in the merged executable. |
+| **.debug** | Info for symbolic debugging (generated with `gcc -g`). |
+| **Section Header Table** (for execution and debugging) | Offsets and sizes of each section. |
+
+  </div>
+  <div style="flex: 1; display: flex; justify-content: center;">
+    <img src="pic/27.png" alt="ELF Structure Diagram" style="width: 100%; max-width: 500px;">
+  </div>
+</div>
+
+- Using the command `readelf -s <file>` to view the symbol table of an 
+**Executable and Linkable Format** (ELF) file.
+
+- Note that Local non-static variables are stored on the stack.
+
+- It will create local symbols in the symbol table with unique names.
+
+
+## Executable Object Files
+
+<img src="pic/28.png" width="50%" height="50%">
+
+## Load Executable Object Files
+
+<img src="pic/29.png" width="50%" height="50%">
+
+## Dynamic Linking with Shared Libraries
+
+### Load-Time Linking
+
+It occurs when the executable is first loaded and run. The standard C library (`libc.so`) is typically dynamically linked this way.
+
+<img src="pic/30.png" width="50%" height="50%">
+
+`LD_PRELOAD` forces the dynamic linker to load a user-specified shared library first, allowing interception of standard functions, but cannot intercept statically linked `_start`.
+
+### Run-Time Linking
+
+It occurs after the program has begun, using calls to the `dlopen()` interface on Linux.
+
+<img src="pic/31.png" width="50%" height="50%">
+
+## Position-Independent Code (PIC)
+
+To exploit the fact that the distance between any instruction in the code segment and any variable in the data segment is a runtime constant, the compiler creates a table called the Global Offset Table (GOT) that holds the absolute addresses of global variables.
+
+### Global Offset Table (GOT)
+
+Resides in the data segment and stores the actual absolute addresses of external functions and global variables. These addresses are filled in by the dynamic linker at load time or on the first call.
+
+### Procedure Linkage Table (PLT)
+
+A memory section containing small executable stubs for each external function the program calls. It lives in a read-only code section (`.text` or `.plt`), providing a trampoline that jumps through the GOT to the actual function.
+
+`.got` stores addresses of global variables for direct access, while `.got.plt` stores addresses of external functions specifically for PLT stubs
+
+### Whole Process
+
+| Step | Stage| Action |
+|:--:|:--:|:--:|
+| 1 | Compile (static time) | Compiler generates pseudo instruction: call printf |
+| 2 | Compile (static time) | Assembler expands to `auipc+jalr`, adds reloc entries|
+| 3 | Link (walk time) | Linker creates .plt stub (`auipc+ld+jalr`)|
+| 4 | Link (walk time) | Linker allocates GOT entry (44B for 32b, 8B for 64b) |
+| 5 | Dynamic Linking (run time) | Dynamic linker fills GOT with real printf address |
