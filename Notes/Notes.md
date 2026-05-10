@@ -6,6 +6,8 @@
 
 # Chapter 1 A Tour of Computer System
 
+Computer system is a combination of hardware components and systems software that work together to run application programs.
+
 ### Compilation System
     
 Take C language as an example `linux > gcc hello.c -o hello`.
@@ -47,6 +49,8 @@ Virtualization is often related to multiplicity, fake versions, and sharing.
 
 - **Virtual Memory**
 
+    Virtual memory is an abstraction that gives each program its own private, continuous address space, while the OS and hardware (MMU/TLB) map those virtual addresses to physical memory (or disk via paging) to provide isolation, security, and the illusion of more memory than physically available.
+
     Program Code & Data, Shared Libraries, Heap, Stack, Kernel Virtual Memory from bottom to top.
     
     - Virtual address space canve greater than the  physical memory.
@@ -81,7 +85,7 @@ $S = \frac{T_{old}}{T_{new}} = \frac{1}{1 - \alpha + \frac{\alpha}{k}}$
 
 ### Computer Architecture
 
-Computer Architecture (e.g. Intel x86, IBM 360, ARM, RISC-V) is the interface between hardware and software, it includes ISA and Microarchitectures (e.g. Different implementations of the same ISA: Single cycle, Multi-cycle, Pipelined, Superscalar, Out-Of-Order, Speculative Execution, Cache Hierarchies, and Various Predictions).
+Computer Architecture (e.g. Intel x86, IBM 360, ARM, RISC-V) is **the interface between hardware and software**, it includes ISA and Microarchitectures (parallel processing techniques (e.g. Pipelining, Multi-threading, Multi-Processing, Superscalar) and Memory hierarchy (e.g. Local memory and caches / Registers, vector registers, SIMD registers)).
 
 # Chapter 2 Representing and Manipulating Information
 
@@ -802,7 +806,7 @@ On each clock cycle, the single‑cycle processor executes one instruction. Stat
 |Store, Branch| $\text{IF} \to \text{ID} \to \text{EX} \to \text{MEM}$ (no $\text{WB}$)|
 |Load|$\text{IF} \to \text{ID} \to \text{EX} \to \text{MEM} \to \text{WB}$|
 
-- Throughput increases as more instructions complete per unit time, but single instruction latency (The time it takes for each instruction to be executed.) does not decrease and may even increase. 
+- Throughput increases as more instructions complete per unit time, but single instruction latency does not decrease and may even increase. 
 - Pipeline rate is limited by the slowest stage.
 - Potential/ideal speedup = Number of pipeline stages (number of pipeline steps).
 - Need to reduce possible fill and drain (e.g., I-cache misses and branch misprediction)
@@ -836,7 +840,7 @@ Some principles of designing a pipelined datapath:
 - **Throughput** The total number of instructions completed **per unit** of time.
 - For superscalar implementation, CPI $<1$.
 - Single cycle as lower throughput but shorter instruction latency.
-- No arithmetic exceptions allow **out‑of‑order retirement**, avoiding stalls for long‑latency instructions.
+- No arithmetic exceptions allow **out‑of‑order retirement** (otherwise it should obtain a precise architecture state for program resumption), avoiding stalls for long‑latency instructions.
 
 ### Pipline Registers
 
@@ -863,7 +867,7 @@ Without pipeline registers, stages would overwrite each other’s data, causing 
     - **user-level switch** (e.g. procedure call) saved on the runtime program stack (caller and callee convention).
     - **system-level switch** (e.g. process switch) saved on the Process Control Block (PCB) or the kernel stack.
 
-- **Micro-architecture states** (invisible to the programmer)
+- **Micro-architecture states** (Invisible to the programmer and not saved during an interrupt, as they can be regenerated once the program resumes.)
     - $\red{\text{Piplined registers}}$ Pipelined registers hold transient data between stages for a few cycles.
     - Branch predictors
     - Caches
@@ -973,6 +977,7 @@ Condition and Target Address are Ready at the $\texttt{EXE}$ Stage.
 | `-O2` | Recommended default: safe, stable, efficient. |
 | `-O3` | Aggressive (loop unroll, SIMD). May increase code size, compile time, and even hurt performance. |
 | `-O4` | `-O3` + Link-Time Optimization (LTO). |
+| `-Os` | Optimize for size, apply for memory-constrained embedded systems. |
 
 ### General Goals
 
@@ -1014,13 +1019,81 @@ Condition and Target Address are Ready at the $\texttt{EXE}$ Stage.
 
 | Flag | Description |
 |:--:|:--:|
-| `-O3 -flto` | Link-Time Optimization: enables whole-program optimization. |
+| `-O3 -flto` | Link-Time Optimization: enables cross-module optimization across file boundaries (e.g., inlining, dead code elimination). |
 | `-march=native` | Generate code optimized for the current CPU architecture (enables all supported instruction sets). |
 | `-mtune=native` | Optimize instruction scheduling for the current CPU without breaking compatibility with older CPUs. |
 | `-fprofile-generate` | Compile instrumented code to generate runtime profiles. |
 | `-fprofile-use` | Use profile data to guide optimizations. |
 | `-Ofast` | Alias for `-O3 -ffast-math`; allows aggressive FP reordering (may break IEEE compliance). |
 | `-fopt-info-missed` | Report which optimizations were missed and why. |
+
+## Memory Locality Enhancements
+
+### Loop Interchange
+
+Loop interchange changes the order of nested loops to improve spatial locality. For example, changing from row-major to column-major access can enhance cache performance.
+
+### Loop Fusion / Fission
+
+Loop fusion combines adjacent loops that iterate over the same range into a single loop, improving temporal locality by accessing data while it is still in cache.
+
+Loop fission (or loop distribution) splits a single loop into multiple loops if the data dependency chain is too long.
+
+### Array Padding
+
+Array padding adds extra space between elements to prevent cache line conflicts.
+
+### Tiling
+
+Tiling for matrix transpose makes the column-wise writes become block-wise contiguous to improve spatial locality. Tiling for matrix multiplication keeps the sub-blocks of A, B, and C in cache simultaneously to maximize data reuse.
+
+### Software Prefetching
+
+Software prefetching inserts instructions to load data into cache before it is actually needed.
+
+<details><summary> Why do we need a separate prefetch 
+Instruction? Can we use regular loads? </summary>
+
+Regular loads may cause page faults, read MMIO, or occupy registers. Prefetch instructions are just hints and do not change program semantics.
+
+</details>
+
+<details><summary> Why do we need to specify temporal locality? </summary>
+
+ Temporal locality tells the hardware whether to place data in regular cache (temporal) or streaming buffers (non-temporal) to avoid cache pollution.
+
+</details>
+
+<details><summary> Why do we need to specify prefetch for read/write? </summary>
+
+Read prefetch brings data in shared state, while write prefetch must obtain exclusive ownership in advance.
+
+</details>
+
+### AoS vs. SoA
+
+- **Array of Structures (AoS)** 
+
+Good for memory locality when multiple fields of the same object are accessed together.
+
+```cpp
+struct Point { float x, y; } points[N];
+for (int i = 0; i < N; i++)
+{
+    points[i].x += points[i].vx;
+    points[i].y += points[i].vy;
+}
+```
+
+- **Structure of Arrays (SoA)**
+
+Good for cache efficiency when only one field is accessed across many objects.
+
+```cpp
+struct Points {float x[N], y[N];} pts;
+float sum = 0;
+for (int i = 0; i < N; i++) sum += pts.z[i];
+```
 
 # Chapter 6 The Memory Hierarchy
 
@@ -1066,7 +1139,7 @@ The gap between the speed of processors and the main memory. The bottleneck has 
 
 Many Programs tend to use data and instructions with addresses near or equal to those they have used recently.
 
-### emporal locality
+### Temporal locality
 
 Recently referenced items are likely to be referenced again in the near future.
 
@@ -1103,8 +1176,9 @@ This gives you Large, Cheap memory, but Fast access.
 
 Caches provide automatic (transparent) data movement, while local memory requires explicit programmer-controlled data management.
 
-<img src="pic/24.png" width="60%" height="60%">
+<img src="pic/24.png" width="50%" height="50%">
 
+Memory hierarchy is combined with **register and local memory** (managed by software), **cache** (managed by hardware) and **main memory** (managed by hardware and OS) to achieve a balance of speed, size, and cost.
 
 ## Cache Management
 
@@ -1138,7 +1212,9 @@ Using high bits as the set index causes consecutive memory blocks to map to the 
 
 $N$-way set-associative has $N$ lines per set while direct-mapped is one way and fully associative is one set.
 
-Given a cache with total size $C$ measured in kilobytes, associativity $E$, and block size $B$ measured in bytes. The number of sets $S$ is calculated as $S = \frac{1024C}{BE}$.
+Given a cache with total size $C$ measured in kilobytes, associativity $E$, and block (line) size $B$ measured in bytes. The number of sets $S$ is calculated as $S = \frac{1024C}{BE}$.
+
+- TLB and victim cache are typically fully associative to maximize hit rate with small size.
 
 ### Performance Impact of Cache Parameters
 
@@ -1146,13 +1222,11 @@ Given a cache with total size $C$ measured in kilobytes, associativity $E$, and 
 
 | Feature | L1 Cache | L2 Cache |
 |:--:|:--:|:--:|
-| Primary goal | Minimize hit time | Minimize miss rate |
-| Locality preference | Spatial locality | Temporal locality |
-| Typical write policy | Write-through | Write-back |
-| Reason | L1 hit directly affects pipeline | L2 miss leads to high memory penalty |
-| Associativity | Low | High |
-| Size | Small | Large |
-
+| **Primary goal** | Minimize hit time | Minimize miss rate  |
+| **Locality preference** | Spatial locality | Temporal locality |
+| **Typical write policy** | Write-through to L2 (one option) | Write-back (more common) |
+| **Reason** | L1 hit directly affects pipeline performance | L2 miss leads to high memory penalty, bus traffic, and latency |
+| **Size** | Small | Large |
 
 - When the block size is too small, the cache cannot fetch enough contiguous data in a single miss (lower spatial locality -- most accesses to nearby addresses still result in cache misses).
 - When the block size is too large, the fixed-size cache holds fewer blocks, leading to more conflicts, frequent replacements and higher miss penalty (lower temporal locality -- the recently used data is quickly evicted before it can be reused).
@@ -1298,7 +1372,7 @@ Every line in L1 must be presented in L2 ($\text{L1} \subseteq \text{L2}$). When
 
 #### Exclusive caches 
 
-If a line, A, is in L1, it must NOT be presented in L2. AMD had adopted this for L2/L3. When L1 evicts a line, it moves to L2. On an L1 miss that hits in L2, the line migrates from L2 to L1. And L1 and L2 must have the same line size.
+if a line A is in L1, it must not be present in L2. AMD adopted this policy for its L2/L3 hierarchy. When L1 evicts a line, it moves to L2. On an L1 miss that hits in L2, the line migrates from L2 to L1. L1 and L2 must also have the same line size.
 
 #### NINE (Non-Inclusive and Non-Exclusive)  
 
@@ -1372,7 +1446,7 @@ Avoid **global symbols** if possible, otherwise use `static` to limit scope, ini
 
 #### Static Libraries
 
-Concatenate related relocatable object files into a single file with an index (called an archive). For example, `ar rs libfoo.a a.o b.o c.o` creates a static library `libfoo.a` containing `a.o`, `b.o`, and `c.o`. 
+Concatenate related relocatable object files into a single file with an index (called an **archive**). For example, `ar rs libfoo.a a.o b.o c.o` creates a static library `libfoo.a` containing `a.o`, `b.o` and `c.o`. 
 
 Linkers scan files left to right, maintain an unresolved reference list, and only extract archive members that resolve current entries, so libraries must come at the end of the command line.
 
@@ -1405,7 +1479,7 @@ It first merges all separate code and data sections into single sections. Then, 
 | **.rodata** | Read-only data: jump tables, string constants, etc. |
 | **.data** | Initialized **global variables** and **initialized local static variables**. |
 | **.bss** | Uninitialized **global variables** and **uninitialized local static variables**. <br> Has section header but occupies no space. |
-| **.symtab** | Symbol table: **procedure names**, **global variable names**, **static variable names**, **external symbols**, section names, and their locations. |
+| **.symtab** | Symbol table: **procedure names**, **global variable names**, **static variable names**, **external symbols** (with `UND`), section names, and their locations. |
 | **.rel.text** | Relocation info for `.text` section: addresses of **instructions** that will need to be modified in the executable, plus instructions for modifying. |
 | **.rel.data** | Relocation info for `.data` section: addresses of **pointer** data that will need to be modified in the merged executable. |
 | **.debug** | Info for symbolic debugging (generated with `gcc -g`). |
@@ -1453,15 +1527,15 @@ It occurs after the program has begun, using calls to the `dlopen()` interface o
 
 To exploit the fact that the distance between any instruction in the code segment and any variable in the data segment is a runtime constant, the compiler creates a table called the Global Offset Table (GOT) that holds the absolute addresses of global variables.
 
-### Global Offset Table (GOT)
+### Global Offset Table (GOT) 
 
-Resides in the data segment and stores the actual absolute addresses of external functions and global variables. These addresses are filled in by the dynamic linker at load time or on the first call.
+Residing in the `.data` segment, the GOT stores the actual absolute addresses of external functions and global variables. These addresses are filled in by the dynamic linker either at load time or upon the first function call, after which the GOT typically becomes read-only to prevent tampering. 
+
+It consists of two parts: the `.got` section holds addresses of global variables for direct access, while the `.got.plt` section stores external function addresses specifically used by the PLT stubs.
 
 ### Procedure Linkage Table (PLT)
 
-A memory section containing small executable stubs for each external function the program calls. It lives in a read-only code section (`.text` or `.plt`), providing a trampoline that jumps through the GOT to the actual function.
-
-`.got` stores addresses of global variables for direct access, while `.got.plt` stores addresses of external functions specifically for PLT stubs
+The PLT is located in the read-only `.text` segment. It contains small executable code stubs for each external function the program calls. Instead of calling an external function directly, the program calls its PLT stub, which acts as a trampoline that safely jumps through the `.got.plt` (in the `.data` segment) to reach the actual function address.
 
 ### Whole Process
 
@@ -1472,3 +1546,12 @@ A memory section containing small executable stubs for each external function th
 | 3 | Link (walk time) | Linker creates .plt stub (`auipc+ld+jalr`)|
 | 4 | Link (walk time) | Linker allocates GOT entry (44B for 32b, 8B for 64b) |
 | 5 | Dynamic Linking (run time) | Dynamic linker fills GOT with real printf address |
+
+## Comparsion
+
+| Tool | Input | Output | Key Responsibility | Timing |
+|:---|:---|:---|:---|:---|
+| **Assembler** | Assembly code (.s) | Relocatable object file (.o) | Translate assembly → machine code; Generate relocation entries (.rel.text, .rel.data) | **Compile-time** |
+| **Linker** (Static) | Multiple .o files + Static libs (.a) | Executable file (ELF) / Shared lib (.so) | Symbol resolution; Section merging; Relocation (static) | **Compile-time / Link-time** |
+| **Loader** | Executable file (ELF) | Process image in memory | Copy executable → RAM; Allocate stack/heap; Transfer control | **Program startup** |
+| **Dynamic Linker** | Shared libraries (.so) + GOT/PLT | Resolved function addresses (in GOT) | Load shared libs; Perform runtime relocation; Support lazy binding | **Program startup / First call** |
