@@ -55,7 +55,7 @@ Virtualization is often related to multiplicity, fake versions, and sharing.
     
     - Virtual address space canve greater than the  physical memory.
 
-    - Memory serves as a cache for virtaul memory.
+    - Memory serves as a cache for virtual memory.
 
     - Support multiprogramming.
 
@@ -1490,6 +1490,38 @@ It first merges all separate code and data sections into single sections. Then, 
     <img src="pic/27.png" alt="ELF Structure Diagram" style="width: 100%; max-width: 500px;">
   </div>
 </div>
+
+- <details> <summary> Example Problem </summary>
+
+    ```c
+    extern int buf[];        
+    int *bufp0 = &buf[0]; 
+    static int *bufp1;
+    static void incr() {
+        static int count = 0;
+        count++;
+    }
+    void swap() {   
+        int temp;
+        incr();
+        bufp1 = &buf[1];
+        temp = *bufp0;
+        *bufp0 = *bufp1;
+        *bufp1 = temp;
+    }
+    ```
+
+    | Symbol | `swap.o` .symtab entry? | Symbol type | Module where defined | Section |
+    |:--:|:--:|:--:|:--:|:--:|
+    | `buf` | Yes | extern | `m.o` | `UND` |
+    | `bufp0` | Yes | global | `swap.o` | `.data` |
+    | `bufp1` | Yes | local | `swap.o` | `.bss` |
+    | `swap` | Yes | global | `swap.o` | `.text` |
+    | `temp` | No | — | — | — |
+    | `incr` | Yes | local | `swap.o` | `.text` |
+    | `count` | Yes | local | `swap.o` | `.bss` |
+
+    </details>
 
 - Using the command `readelf -s <file>` to view the symbol table of an 
 **Executable and Linkable Format** (ELF) file.
