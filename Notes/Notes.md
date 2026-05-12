@@ -348,7 +348,7 @@ Use `-mfma -ffp-contract=fast` to enable FMA.
 
 ## Machine-Level Representation of Programs
 
-### RISC [optimized for processor speed]
+### Reduced Instruction Set Computer (RISC) [optimized for processor speed]
 
 #### Principles
 
@@ -643,7 +643,7 @@ Local variables and CSEs are tend to live longer (may be as long as the procedur
 
 </details>
 
-### CISC [optimized for compact code size]
+### Complex Instruction Set Computer (CISC) [optimized for compact code size]
 
 # Chapter 4 Processor Architecture & Logic Design
 
