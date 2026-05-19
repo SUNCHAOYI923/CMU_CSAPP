@@ -1,5 +1,5 @@
-/Quiz/
-/Slide/
+.cache/
+build/
 *.out
 *.fdb_latexmk
 *.fls
