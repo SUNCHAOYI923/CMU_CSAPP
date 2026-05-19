@@ -1,8 +1,0 @@
-.cache/
-build/
-*.out
-*.fdb_latexmk
-*.fls
-*.log
-*.synctex.gz
-*.aux
